@@ -89,7 +89,7 @@ export class DirectoryService {
       throw new ForbiddenException('An allowed root cannot be moved to Trash');
     }
 
-    this.access.requireApproval(
+    await this.access.requireApproval(
       input.approvalRequestId,
       input.clientId,
       `filesystem.delete-directory:${input.rootIndex ?? 0}:${input.path}`,
@@ -171,7 +171,7 @@ export class DirectoryService {
     failed: Array<{ path: string; error: string }>;
   }> {
     const action = `filesystem.bulk-delete:${input.rootIndex ?? 0}:${input.paths.join('|')}`;
-    this.access.requireApproval(
+    await this.access.requireApproval(
       input.approvalRequestId,
       input.clientId,
       action,

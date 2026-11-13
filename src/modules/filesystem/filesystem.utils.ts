@@ -123,16 +123,16 @@ export class FilesystemAccess {
   }
 
   /** Requests approval or validates a matching, unused approval request. */
-  requireApproval(
+  async requireApproval(
     id: string | undefined,
     clientId: string,
     action: string,
     reason: string,
-  ): void {
+  ): Promise<void> {
     if (!this.approvalRequired) return;
 
     if (!id) {
-      const request = this.approvals.createRequest({
+      const request = await this.approvals.createRequest({
         clientId,
         action,
         reason,
@@ -150,7 +150,7 @@ export class FilesystemAccess {
       );
     }
 
-    const request = this.approvals.getRequest(id);
+    const request = await this.approvals.getRequest(id);
     if (
       !request ||
       request.status !== 'approved' ||

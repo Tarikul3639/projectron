@@ -370,7 +370,7 @@ export class FileTransferService {
         throw new ConflictException('Destination already exists');
       }
 
-      this.access.requireApproval(
+      await this.access.requireApproval(
         input.approvalRequestId,
         upload.clientId,
         `filesystem.write:${upload.rootIndex}:${upload.relativePath}`,

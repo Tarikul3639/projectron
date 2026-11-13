@@ -57,7 +57,7 @@ export class FileEditService {
       );
     }
 
-    this.access.requireApproval(
+    await this.access.requireApproval(
       input.approvalRequestId,
       input.clientId,
       `filesystem.edit:${input.rootIndex ?? 0}:${input.path}`,

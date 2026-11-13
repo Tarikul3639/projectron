@@ -71,7 +71,7 @@ export class FileService {
     }
 
     if (metadata) {
-      this.access.requireApproval(
+      await this.access.requireApproval(
         input.approvalRequestId,
         input.clientId,
         `filesystem.write:${input.rootIndex ?? 0}:${input.path}`,
@@ -103,7 +103,7 @@ export class FileService {
     }
 
     if (metadata) {
-      this.access.requireApproval(
+      await this.access.requireApproval(
         input.approvalRequestId,
         input.clientId,
         `filesystem.append:${input.rootIndex ?? 0}:${input.path}`,
@@ -168,7 +168,7 @@ export class FileService {
 
     const overwritten = prepared.filter((x) => x.exists).map((x) => x.path);
     if (overwritten.length) {
-      this.access.requireApproval(
+      await this.access.requireApproval(
         input.approvalRequestId,
         input.clientId,
         `filesystem.bulk-write:${input.rootIndex ?? 0}:${overwritten.join('|')}`,
@@ -216,7 +216,7 @@ export class FileService {
       );
     }
 
-    this.access.requireApproval(
+    await this.access.requireApproval(
       input.approvalRequestId,
       input.clientId,
       `filesystem.delete:${input.rootIndex ?? 0}:${input.path}`,

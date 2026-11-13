@@ -73,7 +73,7 @@ export class TerminalTools {
           : undefined;
       if (!requestId) throw error;
 
-      const request = this.approvals.getRequest(requestId);
+      const request = await this.approvals.getRequest(requestId);
       if (!request || request.clientId !== input.clientId) throw error;
 
       // Keep the legacy protocol compatible while using the modern multi-round-trip flow by default.
@@ -126,7 +126,7 @@ export class TerminalTools {
       );
     }
 
-    const request = this.approvals.getRequest(state.requestId);
+    const request = await this.approvals.getRequest(state.requestId);
     if (!request || request.clientId !== input.clientId) {
       throw new BadRequestException('Approval request is no longer available');
     }
@@ -146,7 +146,7 @@ export class TerminalTools {
     }
 
     if (response.action !== 'accept') {
-      this.approvals.decide(state.requestId, 'rejected');
+      await this.approvals.decide(state.requestId, 'rejected');
       return {
         status: 'rejected',
         approvalRequestId: state.requestId,
@@ -167,7 +167,7 @@ export class TerminalTools {
       );
     }
 
-    this.approvals.decide(
+    await this.approvals.decide(
       state.requestId,
       decision.decision === 'approve' ? 'approved' : 'rejected',
     );
@@ -209,7 +209,7 @@ export class TerminalTools {
     });
 
     if (response.action !== 'accept') {
-      this.approvals.decide(requestId, 'rejected');
+      await this.approvals.decide(requestId, 'rejected');
       return {
         status: 'rejected',
         approvalRequestId: requestId,
@@ -224,7 +224,7 @@ export class TerminalTools {
       );
     }
 
-    this.approvals.decide(
+    await this.approvals.decide(
       requestId,
       parsed.data.decision === 'approve' ? 'approved' : 'rejected',
     );

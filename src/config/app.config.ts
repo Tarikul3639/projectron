@@ -12,7 +12,6 @@ export const envSchema = z.object({
 
   APPROVAL_REQUIRED: z.enum(['true', 'false']).default('true'),
   FILESYSTEM_ALLOWED_ROOTS: z.string().trim().min(1).default('./workspace'),
-  STORAGE_PATH: z.string().trim().min(1).default('./storage'),
   LOG_LEVEL: z
     .enum(['error', 'warn', 'log', 'debug', 'verbose'])
     .default('debug'),

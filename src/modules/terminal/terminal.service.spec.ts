@@ -9,7 +9,7 @@ function createService(approvalRequired = false) {
     approvalRequired,
   } as never;
   const approvals = {
-    createRequest: vi.fn(() => ({
+    createRequest: vi.fn(async () => ({
       id: '00000000-0000-4000-8000-000000000001',
       clientId: 'test-client',
       action: '',
@@ -18,7 +18,7 @@ function createService(approvalRequired = false) {
       expiresAt: Date.now() + 60_000,
       status: 'pending',
     })),
-    getRequest: vi.fn(),
+    getRequest: vi.fn(async () => undefined),
   } as never;
   return { service: new TerminalService(config, approvals), approvals };
 }

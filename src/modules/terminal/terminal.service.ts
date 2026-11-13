@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -51,6 +52,7 @@ const BLOCKED_EXECUTABLES = new Set([
 /** Executes approved local programs without invoking a command shell. */
 @Injectable()
 export class TerminalService {
+  private readonly logger = new Logger(TerminalService.name);
   private readonly allowedRoots: string[];
   private readonly approvalRequired: boolean;
   private readonly usedApprovalIds = new Set<string>();
@@ -130,7 +132,7 @@ export class TerminalService {
     // Command execution can change files or start arbitrary programs, so it always requires approval when enabled.
     if (this.approvalRequired) {
       if (!input.approvalRequestId) {
-        const request = this.approvals.createRequest({
+        const request = await this.approvals.createRequest({
           clientId: input.clientId,
           action,
           reason: `Execute local program: ${executable} (timeout ${input.timeoutMs} ms)`,
@@ -148,7 +150,7 @@ export class TerminalService {
         );
       }
 
-      const request = this.approvals.getRequest(input.approvalRequestId);
+      const request = await this.approvals.getRequest(input.approvalRequestId);
       if (
         !request ||
         request.status !== 'approved' ||
@@ -162,6 +164,9 @@ export class TerminalService {
       this.usedApprovalIds.add(input.approvalRequestId);
     }
 
+    this.logger.log(
+      `Executing command: ${executable} (cwd: ${workingDirectory})`,
+    );
     return this.spawnCommand(
       executable,
       input.args,
@@ -290,6 +295,7 @@ export class TerminalService {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
+        this.logger.error(`Unable to start command: ${command}`, error.stack);
         reject(
           new BadRequestException(`Unable to start command: ${error.message}`),
         );
@@ -299,6 +305,9 @@ export class TerminalService {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
+        this.logger.log(
+          `Command ${timedOut ? 'timed out' : `finished with exit code ${exitCode}`}: ${command} (${Date.now() - startedAt} ms)`,
+        );
         resolveResult({
           command,
           args: [...args],

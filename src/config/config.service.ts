@@ -51,7 +51,7 @@ export class AppConfigService {
 
   /** Directory used to store Projectron's local files and JSON data. */
   get storagePath(): string {
-    return this.getValue('STORAGE_PATH');
+    return './storage';
   }
 
   /** Minimum application log level to output. */

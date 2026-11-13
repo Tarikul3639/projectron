@@ -1,4 +1,3 @@
-
 import type { ApprovalStatus } from './approval-status.type.js';
 
 // Represents an approval request created by an MCP client.
