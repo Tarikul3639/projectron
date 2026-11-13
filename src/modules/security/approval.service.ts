@@ -1,14 +1,19 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { randomUUID } from 'node:crypto';
-import { CreateApprovalRequestDto } from './dto/create-approval-request.dto.js';
-import type { ApprovalRequest } from './interfaces/approval-request.interface.js';
-import type { ApprovalStatus } from './types/approval-status.type.js';
+import { CreateApprovalRequestDto } from './create-approval-request.dto.js';
+import type { ApprovalRequest } from './approval-request.interface.js';
+import type { ApprovalStatus } from './approval-status.type.js';
 
 @Injectable()
 export class ApprovalService {
-  // Stores pending approval requests in memory.
+  // Stores active approval requests in memory for this Projectron process.
   private readonly requests = new Map<string, ApprovalRequest>();
 
   /** Validates input and creates a request that expires after five minutes by default. */
@@ -60,17 +65,19 @@ export class ApprovalService {
       .map((request) => ({ ...request }));
   }
 
-  /** Approves or rejects a pending request. */
+  /** Approves or rejects a pending request exactly once. */
   decide(
     id: string,
     status: Extract<ApprovalStatus, 'approved' | 'rejected'>,
   ): ApprovalRequest {
     const request = this.requests.get(id);
-    if (!request) throw new Error(`Approval request not found: ${id}`);
+    if (!request) throw new NotFoundException('Approval request not found');
 
     this.expireIfNeeded(request);
     if (request.status !== 'pending') {
-      throw new Error(`Approval request is already ${request.status}`);
+      throw new ConflictException(
+        `Approval request is already ${request.status}`,
+      );
     }
 
     request.status = status;

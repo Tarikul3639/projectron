@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ApprovalService } from './approval.service.js';
 
-// Provides the approval workflow used before protected operations are executed.
+// Provides the approval lifecycle used by protected feature modules.
 @Module({
   providers: [ApprovalService],
-  // Makes approval handling available to other feature modules.
+  // Makes approval validation available to MCP tools and execution services.
   exports: [ApprovalService],
 })
 export class SecurityModule {}
