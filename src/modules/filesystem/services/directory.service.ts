@@ -17,6 +17,7 @@ import type {
   CreateMultipleDirectoriesInput,
 } from '../filesystem.type.js';
 import {
+  assertNoProtectedEnvironmentFiles,
   ensureDestinationDoesNotExist,
   FilesystemAccess,
   moveToTrash,
@@ -26,10 +27,11 @@ import {
 @Injectable()
 export class DirectoryService {
   private readonly access: FilesystemAccess;
-  
+
   constructor(config: AppConfigService, approvals: ApprovalService) {
     this.access = new FilesystemAccess(config, approvals);
   }
+
   /** Creates configured workspace roots before directory tools are used. */
   onModuleInit(): Promise<void> {
     return this.access.initialize();
@@ -49,6 +51,7 @@ export class DirectoryService {
       input.rootIndex,
     );
     const entries = await readdir(directory, { withFileTypes: true });
+
     return Promise.all(
       entries.map(async (entry) => {
         const metadata = await lstat(resolve(directory, entry.name));
@@ -77,16 +80,22 @@ export class DirectoryService {
   async deleteDirectory(input: DeleteFileInput): Promise<void> {
     const path = await this.access.resolve(input.path, input.rootIndex);
     const metadata = await lstat(path);
-    if (!metadata.isDirectory())
+
+    if (!metadata.isDirectory()) {
       throw new BadRequestException('Path is not a directory');
-    if (path === this.access.allowedRoots[input.rootIndex ?? 0])
+    }
+
+    if (path === this.access.allowedRoots[input.rootIndex ?? 0]) {
       throw new ForbiddenException('An allowed root cannot be moved to Trash');
+    }
+
     this.access.requireApproval(
       input.approvalRequestId,
       input.clientId,
       `filesystem.delete-directory:${input.rootIndex ?? 0}:${input.path}`,
       'Move a directory and all its contents to the user Trash',
     );
+
     await moveToTrash(path, false, true);
   }
 
@@ -97,12 +106,19 @@ export class DirectoryService {
       input.newPath,
       input.rootIndex,
     );
-    if (!(await lstat(source)).isDirectory())
+
+    if (!(await lstat(source)).isDirectory()) {
       throw new BadRequestException('Source path is not a directory');
-    if (destination === source || destination.startsWith(source + sep))
+    }
+
+    await assertNoProtectedEnvironmentFiles(source);
+
+    if (destination === source || destination.startsWith(source + sep)) {
       throw new BadRequestException(
         'A directory cannot be moved inside itself',
       );
+    }
+
     await ensureDestinationDoesNotExist(destination);
     await mkdir(dirname(destination), { recursive: true });
     await rename(source, destination);
@@ -114,6 +130,7 @@ export class DirectoryService {
   ): Promise<Array<{ name: string; type: string; children?: unknown[] }>> {
     const root = await this.access.resolve(input.path ?? '.', input.rootIndex);
     const maxDepth = Math.min(Math.max(input.maxDepth ?? 5, 1), 10);
+
     const walk = async (
       directory: string,
       depth: number,
@@ -124,11 +141,12 @@ export class DirectoryService {
         type: string;
         children?: unknown[];
       }> = [];
+
       for (const entry of entries) {
         const path = resolve(directory, entry.name);
-        if (entry.isSymbolicLink())
+        if (entry.isSymbolicLink()) {
           result.push({ name: entry.name, type: 'symlink' });
-        else if (entry.isDirectory())
+        } else if (entry.isDirectory()) {
           result.push({
             name: entry.name,
             type: 'directory',
@@ -136,10 +154,14 @@ export class DirectoryService {
               ? { children: await walk(path, depth + 1) }
               : {}),
           });
-        else result.push({ name: entry.name, type: 'file' });
+        } else {
+          result.push({ name: entry.name, type: 'file' });
+        }
       }
+
       return result;
     };
+
     return walk(root, 1);
   }
 
@@ -155,16 +177,21 @@ export class DirectoryService {
       action,
       `Move ${input.paths.length} filesystem entries to the user Trash`,
     );
+
     const succeeded: string[] = [];
     const failed: Array<{ path: string; error: string }> = [];
+
     for (const item of input.paths) {
       try {
         const path = await this.access.resolve(item, input.rootIndex);
         const metadata = await lstat(path);
-        if (path === this.access.allowedRoots[input.rootIndex ?? 0])
+
+        if (path === this.access.allowedRoots[input.rootIndex ?? 0]) {
           throw new ForbiddenException(
             'An allowed root cannot be moved to Trash',
           );
+        }
+
         await moveToTrash(
           path,
           metadata.isSymbolicLink(),
@@ -179,6 +206,7 @@ export class DirectoryService {
         });
       }
     }
+
     return { succeeded, failed };
   }
 
@@ -191,6 +219,7 @@ export class DirectoryService {
   }> {
     const succeeded: string[] = [];
     const failed: Array<{ path: string; error: string }> = [];
+
     for (const path of input.paths) {
       try {
         await this.createDirectory({ path, rootIndex: input.rootIndex });
@@ -203,6 +232,7 @@ export class DirectoryService {
         });
       }
     }
+
     return { succeeded, failed };
   }
 }

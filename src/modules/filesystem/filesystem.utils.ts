@@ -14,6 +14,7 @@ import {
   rm,
   symlink,
   readlink,
+  readdir,
   unlink,
   writeFile,
 } from 'node:fs/promises';
@@ -29,6 +30,16 @@ import {
 } from 'node:path';
 import { AppConfigService } from '../../config/config.service.js';
 import { ApprovalService } from '../security/approval.service.js';
+
+/** Blocks direct access to .env files while allowing the documented .env.example template. */
+export function assertEnvironmentFileIsNotProtected(path: string): void {
+  const name = basename(path.replace(/[\\/]+$/, ''));
+  if (/^\.env(?:\..+)?$/.test(name) && name !== '.env.example') {
+    throw new ForbiddenException(
+      'Environment files are protected and cannot be read or modified by Projectron',
+    );
+  }
+}
 
 /** Shared filesystem boundary: allowed roots, safe path resolution, and one-use approvals. */
 export class FilesystemAccess {
@@ -56,6 +67,8 @@ export class FilesystemAccess {
 
   /** Resolves a relative path while blocking traversal and symlink escapes. */
   async resolve(path: string, rootIndex = 0): Promise<string> {
+    // Deny every direct access to real environment files; .env.example remains usable.
+    assertEnvironmentFileIsNotProtected(path);
     if (!path.trim() || isAbsolute(path))
       throw new BadRequestException('A non-empty relative path is required');
     const root = this.allowedRoots[rootIndex];
@@ -127,6 +140,18 @@ export class FilesystemAccess {
   }
 }
 
+/** Rejects directory operations that would expose or remove protected environment files. */
+export async function assertNoProtectedEnvironmentFiles(
+  directory: string,
+): Promise<void> {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    assertEnvironmentFileIsNotProtected(entry.name);
+    if (entry.isDirectory()) {
+      await assertNoProtectedEnvironmentFiles(resolve(directory, entry.name));
+    }
+  }
+}
+
 /** Checks path existence without following symbolic links. */
 export async function pathExists(path: string): Promise<boolean> {
   try {
@@ -156,6 +181,8 @@ export async function moveToTrash(
   symbolicLink: boolean,
   directory = false,
 ): Promise<void> {
+  // A parent directory cannot be removed if it contains any protected environment file.
+  if (directory) await assertNoProtectedEnvironmentFiles(path);
   const dataHome =
     process.env.XDG_DATA_HOME || resolve(homedir(), '.local', 'share');
   const files = resolve(dataHome, 'Trash', 'files');

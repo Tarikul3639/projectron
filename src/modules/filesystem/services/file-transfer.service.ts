@@ -33,6 +33,7 @@ import type {
   FileUploadIdInput,
 } from '../filesystem.type.js';
 import {
+  assertNoProtectedEnvironmentFiles,
   ensureDestinationDoesNotExist,
   FilesystemAccess,
   pathExists,
@@ -56,9 +57,11 @@ type UploadSession = {
 export class FileTransferService {
   private readonly access: FilesystemAccess;
   private readonly uploads = new Map<string, UploadSession>();
+
   constructor(config: AppConfigService, approvals: ApprovalService) {
     this.access = new FilesystemAccess(config, approvals);
   }
+
   /** Creates configured roots before transfer tools are used. */
   onModuleInit(): Promise<void> {
     return this.access.initialize();
@@ -71,8 +74,11 @@ export class FileTransferService {
       input.destination,
       input.rootIndex,
     );
-    if (!(await stat(source)).isFile())
+
+    if (!(await stat(source)).isFile()) {
       throw new BadRequestException('Source path is not a regular file');
+    }
+
     await ensureDestinationDoesNotExist(destination);
     await mkdir(dirname(destination), { recursive: true });
     await copyFile(source, destination, fsConstants.COPYFILE_EXCL);
@@ -85,18 +91,28 @@ export class FileTransferService {
       input.destination,
       input.rootIndex,
     );
+
     const metadata = await lstat(source);
-    if (!metadata.isFile() && !metadata.isSymbolicLink())
+    if (!metadata.isFile() && !metadata.isSymbolicLink()) {
       throw new BadRequestException('Source path is not a file');
+    }
+
     await ensureDestinationDoesNotExist(destination);
     await mkdir(dirname(destination), { recursive: true });
+
     try {
       await rename(source, destination);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
-      if (metadata.isSymbolicLink())
+      if ((error as NodeJS.ErrnoException).code !== 'EXDEV') {
+        throw error;
+      }
+
+      if (metadata.isSymbolicLink()) {
         await symlink(await readlink(source), destination);
-      else await copyFile(source, destination, fsConstants.COPYFILE_EXCL);
+      } else {
+        await copyFile(source, destination, fsConstants.COPYFILE_EXCL);
+      }
+
       await unlink(source);
     }
   }
@@ -108,12 +124,19 @@ export class FileTransferService {
       input.destination,
       input.rootIndex,
     );
-    if (!(await lstat(source)).isDirectory())
+
+    if (!(await lstat(source)).isDirectory()) {
       throw new BadRequestException('Source path is not a directory');
-    if (destination === source || destination.startsWith(source + sep))
+    }
+
+    await assertNoProtectedEnvironmentFiles(source);
+
+    if (destination === source || destination.startsWith(source + sep)) {
       throw new BadRequestException(
         'A directory cannot be copied inside itself',
       );
+    }
+
     await ensureDestinationDoesNotExist(destination);
     await mkdir(dirname(destination), { recursive: true });
     await cp(source, destination, {
@@ -131,18 +154,29 @@ export class FileTransferService {
       input.destination,
       input.rootIndex,
     );
-    if (!(await lstat(source)).isDirectory())
+
+    if (!(await lstat(source)).isDirectory()) {
       throw new BadRequestException('Source path is not a directory');
-    if (destination === source || destination.startsWith(source + sep))
+    }
+
+    await assertNoProtectedEnvironmentFiles(source);
+
+    if (destination === source || destination.startsWith(source + sep)) {
       throw new BadRequestException(
         'A directory cannot be moved inside itself',
       );
+    }
+
     await ensureDestinationDoesNotExist(destination);
     await mkdir(dirname(destination), { recursive: true });
+
     try {
       await rename(source, destination);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
+      if ((error as NodeJS.ErrnoException).code !== 'EXDEV') {
+        throw error;
+      }
+
       await cp(source, destination, {
         recursive: true,
         errorOnExist: true,
@@ -161,12 +195,15 @@ export class FileTransferService {
     const succeeded: Array<{ path: string; destination: string }> = [];
     const failed: Array<{ path: string; destination: string; error: string }> =
       [];
+
     for (const item of input.items) {
       try {
         const source = await this.access.resolve(item.path, input.rootIndex);
-        if ((await lstat(source)).isDirectory())
+        if ((await lstat(source)).isDirectory()) {
           await this.copyDirectory({ ...item, rootIndex: input.rootIndex });
-        else await this.copyFile({ ...item, rootIndex: input.rootIndex });
+        } else {
+          await this.copyFile({ ...item, rootIndex: input.rootIndex });
+        }
         succeeded.push(item);
       } catch (error) {
         failed.push({
@@ -176,6 +213,7 @@ export class FileTransferService {
         });
       }
     }
+
     return { succeeded, failed };
   }
 
@@ -187,12 +225,15 @@ export class FileTransferService {
     const succeeded: Array<{ path: string; destination: string }> = [];
     const failed: Array<{ path: string; destination: string; error: string }> =
       [];
+
     for (const item of input.items) {
       try {
         const source = await this.access.resolve(item.path, input.rootIndex);
-        if ((await lstat(source)).isDirectory())
+        if ((await lstat(source)).isDirectory()) {
           await this.moveDirectory({ ...item, rootIndex: input.rootIndex });
-        else await this.moveFile({ ...item, rootIndex: input.rootIndex });
+        } else {
+          await this.moveFile({ ...item, rootIndex: input.rootIndex });
+        }
         succeeded.push(item);
       } catch (error) {
         failed.push({
@@ -202,6 +243,7 @@ export class FileTransferService {
         });
       }
     }
+
     return { succeeded, failed };
   }
 
@@ -209,25 +251,33 @@ export class FileTransferService {
   async beginFileUpload(
     input: BeginFileUploadInput,
   ): Promise<{ transferId: string; chunkSizeBytes: number }> {
-    if (!Number.isSafeInteger(input.totalBytes) || input.totalBytes < 1)
+    if (!Number.isSafeInteger(input.totalBytes) || input.totalBytes < 1) {
       throw new BadRequestException(
         'totalBytes must be a positive safe integer',
       );
+    }
+
     const rootIndex = input.rootIndex ?? 0;
     const targetPath = await this.access.resolve(input.path, rootIndex);
-    if ((await pathExists(targetPath)) && !input.overwrite)
+
+    if ((await pathExists(targetPath)) && !input.overwrite) {
       throw new ConflictException(
         'Destination already exists; set overwrite=true to request approval at completion',
       );
+    }
+
     const transferId = randomUUID();
     await mkdir(await this.access.resolve('.projectron-transfers', rootIndex), {
       recursive: true,
     });
+
     const temporaryPath = await this.access.resolve(
       `.projectron-transfers/${transferId}.part`,
       rootIndex,
     );
+
     await writeFile(temporaryPath, Buffer.alloc(0), { flag: 'wx' });
+
     this.uploads.set(transferId, {
       targetPath,
       relativePath: input.path,
@@ -240,6 +290,7 @@ export class FileTransferService {
       clientId: input.clientId,
       rootIndex,
     });
+
     return { transferId, chunkSizeBytes: 1_048_576 };
   }
 
@@ -251,24 +302,34 @@ export class FileTransferService {
     complete: boolean;
   }> {
     const upload = this.uploads.get(input.transferId);
-    if (!upload) throw new NotFoundException('Upload session not found');
-    if (input.chunkIndex !== upload.nextChunkIndex)
+    if (!upload) {
+      throw new NotFoundException('Upload session not found');
+    }
+
+    if (input.chunkIndex !== upload.nextChunkIndex) {
       throw new ConflictException(
         `Expected chunk index ${upload.nextChunkIndex}`,
       );
+    }
+
     const chunk = Buffer.from(input.base64Data, 'base64');
-    if (!chunk.length || chunk.toString('base64') !== input.base64Data)
+    if (!chunk.length || chunk.toString('base64') !== input.base64Data) {
       throw new BadRequestException(
         'Chunk must contain canonical non-empty base64 data',
       );
+    }
+
     if (
       chunk.length > 1_048_576 ||
       upload.bytesWritten + chunk.length > upload.expectedBytes
-    )
+    ) {
       throw new BadRequestException('Chunk exceeds the allowed upload size');
+    }
+
     await appendFile(upload.temporaryPath, chunk);
     upload.bytesWritten += chunk.length;
     upload.nextChunkIndex++;
+
     return {
       transferId: input.transferId,
       chunkIndex: input.chunkIndex,
@@ -282,22 +343,33 @@ export class FileTransferService {
     input: FinishFileUploadInput,
   ): Promise<{ path: string; bytesWritten: number; sha256: string }> {
     const upload = this.uploads.get(input.transferId);
-    if (!upload) throw new NotFoundException('Upload session not found');
-    if (upload.bytesWritten !== upload.expectedBytes)
+    if (!upload) {
+      throw new NotFoundException('Upload session not found');
+    }
+
+    if (upload.bytesWritten !== upload.expectedBytes) {
       throw new ConflictException(
         `Upload is incomplete: ${upload.bytesWritten}/${upload.expectedBytes} bytes received`,
       );
+    }
+
     const hash = createHash('sha256');
-    for await (const chunk of createReadStream(upload.temporaryPath))
+    for await (const chunk of createReadStream(upload.temporaryPath)) {
       hash.update(chunk);
+    }
+
     const sha256 = hash.digest('hex');
-    if (upload.sha256 && sha256 !== upload.sha256)
+    if (upload.sha256 && sha256 !== upload.sha256) {
       throw new BadRequestException(
         'Uploaded file SHA-256 does not match the declared checksum',
       );
+    }
+
     if (await pathExists(upload.targetPath)) {
-      if (!upload.overwrite)
+      if (!upload.overwrite) {
         throw new ConflictException('Destination already exists');
+      }
+
       this.access.requireApproval(
         input.approvalRequestId,
         upload.clientId,
@@ -305,9 +377,11 @@ export class FileTransferService {
         'Overwrite an existing file with a completed chunked upload',
       );
     }
+
     await mkdir(dirname(upload.targetPath), { recursive: true });
     await rename(upload.temporaryPath, upload.targetPath);
     this.uploads.delete(input.transferId);
+
     return {
       path: upload.targetPath,
       bytesWritten: upload.bytesWritten,
@@ -324,7 +398,10 @@ export class FileTransferService {
     complete: boolean;
   } {
     const upload = this.uploads.get(id);
-    if (!upload) throw new NotFoundException('Upload session not found');
+    if (!upload) {
+      throw new NotFoundException('Upload session not found');
+    }
+
     return {
       transferId: id,
       bytesWritten: upload.bytesWritten,
@@ -337,7 +414,10 @@ export class FileTransferService {
   /** Aborts an upload and removes its staged temporary file. */
   async abortFileUpload(id: string): Promise<void> {
     const upload = this.uploads.get(id);
-    if (!upload) throw new NotFoundException('Upload session not found');
+    if (!upload) {
+      throw new NotFoundException('Upload session not found');
+    }
+
     await rm(upload.temporaryPath, { force: true });
     this.uploads.delete(id);
   }
