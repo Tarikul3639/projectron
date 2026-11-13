@@ -142,6 +142,20 @@ export class ApprovalService implements OnModuleInit {
     return { ...request };
   }
 
+  /** Decides a request only when it belongs to the calling MCP client. */
+  async decideForClient(
+    id: string,
+    clientId: string,
+    status: Extract<ApprovalStatus, 'approved' | 'rejected'>,
+  ): Promise<ApprovalRequest> {
+    const request = await this.getRequest(id);
+    if (!request || request.clientId !== clientId) {
+      throw new NotFoundException('Approval request not found');
+    }
+
+    return this.decide(id, status);
+  }
+
   /** Serializes writes so concurrent lifecycle changes cannot overwrite newer snapshots. */
   private persist(): Promise<void> {
     this.persistenceQueue = this.persistenceQueue

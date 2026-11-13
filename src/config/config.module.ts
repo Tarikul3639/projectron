@@ -8,6 +8,7 @@ import { AppConfigService } from './config.service.js';
   imports: [
     NestConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env.local', '.env.prod'],
       validate: validateEnv,
     }),
   ],

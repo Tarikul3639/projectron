@@ -1,8 +1,7 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { ApprovalService } from './approval.service.js';
 
-// Supplies an in-memory JSON store so approval persistence can be tested without disk I/O.
 function createService() {
   let stored: unknown;
   const storage = {
@@ -73,6 +72,22 @@ describe('ApprovalService', () => {
       'rejected',
     );
     expect(storage.write).toHaveBeenCalledTimes(4);
+  });
+
+  it('only allows the owning client to decide a request', async () => {
+    const { service } = createService();
+    const request = await service.createRequest({
+      clientId: 'client-a',
+      action: 'terminal.execute',
+      reason: 'Run a command',
+    });
+
+    await expect(
+      service.decideForClient(request.id, 'client-b', 'approved'),
+    ).rejects.toThrow(NotFoundException);
+    await expect(
+      service.decideForClient(request.id, 'client-a', 'approved'),
+    ).resolves.toMatchObject({ status: 'approved' });
   });
 
   it('expires requests and rejects invalid TTL', async () => {

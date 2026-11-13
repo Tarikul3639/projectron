@@ -260,16 +260,24 @@ export class TerminalService {
       ) => {
         const remaining = MAX_OUTPUT_BYTES - Buffer.byteLength(current, 'utf8');
         if (remaining <= 0) {
-          if (stream === 'stdout') stdoutTruncated = true;
-          else stderrTruncated = true;
+          if (stream === 'stdout') {
+            stdoutTruncated = true;
+          } else {
+            stderrTruncated = true;
+          }
           return current;
         }
         const text = chunk.toString('utf8');
         const bytes = Buffer.from(text, 'utf8');
-        if (bytes.length <= remaining) return current + text;
+        if (bytes.length <= remaining) {
+          return current + text;
+        }
         const bounded = bytes.subarray(0, remaining).toString('utf8');
-        if (stream === 'stdout') stdoutTruncated = true;
-        else stderrTruncated = true;
+        if (stream === 'stdout') {
+          stdoutTruncated = true;
+        } else {
+          stderrTruncated = true;
+        }
         return current + bounded;
       };
 
@@ -284,9 +292,11 @@ export class TerminalService {
         timedOut = true;
         // Kill the whole process group on POSIX to avoid leaving spawned children behind.
         try {
-          if (process.platform !== 'win32' && child.pid)
+          if (process.platform !== 'win32' && child.pid) {
             process.kill(-child.pid, 'SIGKILL');
-          else child.kill('SIGKILL');
+          } else {
+            child.kill('SIGKILL');
+          }
         } catch {
           child.kill('SIGKILL');
         }
