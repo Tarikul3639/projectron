@@ -1,11 +1,15 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Socket } from 'node:net';
 import { NetworkAddressService } from './network-address.service.js';
-import type { ConnectivityInput, PortCheckInput } from '../network.type.js';
+import type {
+  ConnectivityInput,
+  PortCheckInput,
+} from '../types/network.type.js';
 
 /** Performs TCP connectivity and port checks against public destinations. */
 @Injectable()
 export class NetworkConnectivityService {
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly addresses: NetworkAddressService) {}
 
   /** Tests whether a public host accepts a TCP connection on the requested port. */

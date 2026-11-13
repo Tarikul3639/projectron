@@ -7,11 +7,12 @@ import {
   resolveTxt,
 } from 'node:dns/promises';
 import { NetworkAddressService } from './network-address.service.js';
-import type { DnsLookupInput } from '../network.type.js';
+import type { DnsLookupInput } from '../types/network.type.js';
 
 /** Performs DNS record lookups. */
 @Injectable()
 export class NetworkDnsService {
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly addresses: NetworkAddressService) {}
 
   /** Resolves DNS records and returns all supported records for the requested host. */

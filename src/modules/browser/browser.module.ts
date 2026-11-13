@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ApprovalModule } from '../approval/approval.module.js';
 import { AppConfigModule } from '../../config/config.module.js';
 
-import { BrowserTools } from './browser.tools.js';
+import { BrowserTools } from './tools/browser.tools.js';
 import { BrowserSessionService } from './services/browser-session.service.js';
 import { BrowserPageService } from './services/browser-page.service.js';
 import { BrowserArtifactService } from './services/browser-artifact.service.js';

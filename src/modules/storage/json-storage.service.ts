@@ -6,8 +6,10 @@ import { FileStorageService } from './file-storage.service.js';
  *  All JSON files are read and written as UTF-8 text with pretty formatting.
  */
 
+/** Provides the json storage functionality for this module. */
 @Injectable()
 export class JsonStorageService {
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly fileStorage: FileStorageService) {}
 
   /** Reads and parses a JSON file from the storage directory. */

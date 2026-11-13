@@ -44,6 +44,26 @@ export class AppConfigService {
     return this.getValue('APPROVAL_REQUIRED') === 'true';
   }
 
+  /** OpenAI-compatible API base URL used by the orchestration provider. */
+  get aiBaseUrl(): string {
+    return this.getValue('AI_BASE_URL');
+  }
+
+  /** Optional API key; absence disables AI-backed planning without affecting the app. */
+  get aiApiKey(): string | undefined {
+    return this.configService.get<string>('AI_API_KEY')?.trim() || undefined;
+  }
+
+  /** Model identifier sent to the configured AI provider. */
+  get aiModel(): string {
+    return this.getValue('AI_MODEL');
+  }
+
+  /** Maximum duration of one AI provider request. */
+  get aiTimeoutMs(): number {
+    return this.getValue('AI_TIMEOUT_MS');
+  }
+
   /** Root directories that filesystem operations are allowed to access. */
   get filesystemAllowedRoots(): string {
     return this.getValue('FILESYSTEM_ALLOWED_ROOTS');

@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DocumentFileService } from './document-file.service.js';
-import type { DocumentConvertInput } from '../documents.type.js';
-import { getDocumentFormat } from '../documents.utils.js';
+import type { DocumentConvertInput } from '../types/documents.type.js';
+import { getDocumentFormat } from '../utils/documents.utils.js';
 
 /** Converts between supported text-based document formats without external executables. */
 @Injectable()
 export class DocumentConverterService {
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly files: DocumentFileService) {}
 
   /** Reads a source document, converts its content, and writes the destination document. */

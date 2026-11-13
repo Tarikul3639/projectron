@@ -17,19 +17,20 @@ import type {
   DocumentCreateInput,
   DocumentInspectInput,
   DocumentReadInput,
-} from '../documents.type.js';
-import type { DocumentInfo } from '../documents.interface.js';
+} from '../types/documents.type.js';
+import type { DocumentInfo } from '../interfaces/documents.interface.js';
 import {
   assertDocumentPathIsAllowed,
   countWords,
   getDocumentFormat,
-} from '../documents.utils.js';
+} from '../utils/documents.utils.js';
 
 const MAX_DOCUMENT_BYTES = 1_000_000;
 
 /** Reads, inspects, and creates supported text documents inside configured workspace roots. */
 @Injectable()
 export class DocumentFileService {
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly config: AppConfigService) {}
 
   /** Creates configured workspace roots before document operations begin. */

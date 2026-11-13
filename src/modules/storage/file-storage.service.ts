@@ -8,11 +8,13 @@ import { AppConfigService } from '../../config/config.service.js';
  * All paths are resolved relative to the storage root and cannot escape it.
  */
 
+/** Provides the file storage functionality for this module. */
 @Injectable()
 export class FileStorageService {
   // Keeps all application storage operations inside the configured storage directory.
   private readonly rootPath: string;
 
+  /** Creates the service and initializes its dependencies. */
   constructor(config: AppConfigService) {
     // Resolves the configured storage directory to an absolute path.
     this.rootPath = resolve(config.storagePath);

@@ -5,8 +5,10 @@ import { AppConfigService } from '../../../config/config.service.js';
 import { BrowserSessionService } from './browser-session.service.js';
 
 // Produces screenshots, PDFs, traces, and viewport emulation artifacts.
+/** Provides the browser artifact functionality for this module. */
 @Injectable()
 export class BrowserArtifactService {
+  /** Creates the service and initializes its dependencies. */
   constructor(
     private readonly sessions: BrowserSessionService,
     private readonly config: AppConfigService,

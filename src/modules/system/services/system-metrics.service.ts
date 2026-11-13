@@ -8,6 +8,7 @@ const CPU_SAMPLE_MS = 250;
 /** Samples host CPU, memory, load, disk I/O, and temperature metrics. */
 @Injectable()
 export class SystemMetricsService {
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly hardware: SystemHardwareService) {}
 
   /** Samples overall CPU, memory, load average, and uptime metrics. */
@@ -48,7 +49,7 @@ export class SystemMetricsService {
   private async sampleCpuUsage(): Promise<number> {
     const first = this.cpuTimes();
 
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, CPU_SAMPLE_MS));
 
     const second = this.cpuTimes();
     const total = second.total - first.total;

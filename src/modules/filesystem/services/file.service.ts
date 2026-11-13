@@ -21,14 +21,15 @@ import type {
   WriteFileInput,
   WriteMultipleFilesInput,
   ReadFileChunkInput,
-} from '../filesystem.type.js';
-import { FilesystemAccess, moveToTrash } from '../filesystem.utils.js';
+} from '../types/filesystem.type.js';
+import { FilesystemAccess, moveToTrash } from '../utils/filesystem.utils.js';
 
 /** Handles single-file reads, writes, append, deletion, and bounded byte reads. */
 @Injectable()
 export class FileService {
   private readonly access: FilesystemAccess;
 
+  /** Creates the service and initializes its dependencies. */
   constructor(config: AppConfigService, approvals: ApprovalService) {
     this.access = new FilesystemAccess(config, approvals);
   }

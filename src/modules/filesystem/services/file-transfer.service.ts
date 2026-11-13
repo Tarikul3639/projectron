@@ -21,7 +21,7 @@ import {
   unlink,
   writeFile,
 } from 'node:fs/promises';
-import { dirname, resolve, sep } from 'node:path';
+import { dirname, sep } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
 import { ApprovalService } from '../../approval/services/approval.service.js';
 import type {
@@ -30,14 +30,13 @@ import type {
   FinishFileUploadInput,
   PathPairInput,
   WriteFileChunkInput,
-  FileUploadIdInput,
-} from '../filesystem.type.js';
+} from '../types/filesystem.type.js';
 import {
   assertNoProtectedEnvironmentFiles,
   ensureDestinationDoesNotExist,
   FilesystemAccess,
   pathExists,
-} from '../filesystem.utils.js';
+} from '../utils/filesystem.utils.js';
 
 type UploadSession = {
   targetPath: string;
@@ -58,6 +57,7 @@ export class FileTransferService {
   private readonly access: FilesystemAccess;
   private readonly uploads = new Map<string, UploadSession>();
 
+  /** Creates the service and initializes its dependencies. */
   constructor(config: AppConfigService, approvals: ApprovalService) {
     this.access = new FilesystemAccess(config, approvals);
   }

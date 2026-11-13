@@ -5,8 +5,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { spawn, type ChildProcess } from 'node:child_process';
-import type { ManagedProcess } from '../processes.interface.js';
-import type { StartProcessInput } from '../processes.type.js';
+import type { ManagedProcess } from '../interfaces/processes.interface.js';
+import type { StartProcessInput } from '../types/processes.type.js';
 import { ProcessRegistryService } from './process-registry.service.js';
 import { ProcessWorkspaceService } from './process-workspace.service.js';
 
@@ -33,14 +33,17 @@ const BLOCKED_EXECUTABLES = new Set([
   'php',
 ]);
 
+/** Provides the process execution functionality for this module. */
 @Injectable()
 export class ProcessExecutionService {
   private readonly logger = new Logger(ProcessExecutionService.name);
+  /** Creates the service and initializes its dependencies. */
   constructor(
     private readonly workspace: ProcessWorkspaceService,
     private readonly registry: ProcessRegistryService,
   ) {}
 
+  /** Handles start for the component. */
   async start(input: StartProcessInput): Promise<ManagedProcess> {
     if (this.registry.size >= MAX_MANAGED_PROCESSES)
       throw new ForbiddenException('Projectron process limit reached');
@@ -123,6 +126,7 @@ export class ProcessExecutionService {
     return { ...record, args: [...record.args] };
   }
 
+  /** Handles stop for the component. */
   async stop(pid: number): Promise<ManagedProcess> {
     const record = this.registry.getRecord(pid);
     const child: ChildProcess | undefined = this.registry.getChild(pid);

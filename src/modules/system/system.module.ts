@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { SystemTools } from './system.tools.js';
+import { SystemTools } from './tools/system.tools.js';
 import { SystemInfoService } from './services/system-info.service.js';
 import { SystemMetricsService } from './services/system-metrics.service.js';
 import { SystemHardwareService } from './services/system-hardware.service.js';

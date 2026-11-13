@@ -6,10 +6,11 @@ import type {
   BrowserPage,
   BrowserPageSummary,
   BrowserSession,
-} from '../browser.type.js';
-import type { BrowserLaunchOptions } from '../browser.interface.js';
+} from '../types/browser.type.js';
+import type { BrowserLaunchOptions } from '../interfaces/browser.interface.js';
 
 // Owns Chromium, isolated contexts, tabs, and the in-memory download registry.
+/** Provides the browser session functionality for this module. */
 @Injectable()
 export class BrowserSessionService implements OnModuleDestroy {
   private browser?: Browser;
@@ -191,10 +192,12 @@ export class BrowserSessionService implements OnModuleDestroy {
     );
   }
 
+  /** Handles on module destroy for the component. */
   async onModuleDestroy() {
     await this.close();
   }
 
+  /** Handles ensure browser for the component. */
   private async ensureBrowser() {
     if (!this.browser || !this.browser.isConnected()) {
       this.browser = await chromium.launch({
@@ -208,6 +211,7 @@ export class BrowserSessionService implements OnModuleDestroy {
       });
     }
   }
+  /** Handles register page for the component. */
   private registerPage(session: BrowserSession, page: Page): BrowserPage {
     const record: BrowserPage = {
       id: randomUUID(),
@@ -223,9 +227,11 @@ export class BrowserSessionService implements OnModuleDestroy {
     page.on('popup', (popup) => this.registerPage(session, popup));
     return record;
   }
+  /** Returns default session from the service. */
   private getDefaultSession() {
     return this.getSession(this.getPage().sessionId);
   }
+  /** Handles session summary for the component. */
   private sessionSummary(session: BrowserSession) {
     return {
       createdAt: session.createdAt,

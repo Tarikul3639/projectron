@@ -23,6 +23,7 @@ interface ApprovalState {
 /** Centralizes MCP elicitation and binds approval to the exact operation input. */
 @Injectable()
 export class McpApprovalService {
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly approvals: ApprovalService) {}
 
   /** Requests approval, resumes modern elicitation, or handles legacy clients. */

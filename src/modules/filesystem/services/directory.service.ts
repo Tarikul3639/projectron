@@ -15,19 +15,20 @@ import type {
   RenamePathInput,
   DeleteMultipleInput,
   CreateMultipleDirectoriesInput,
-} from '../filesystem.type.js';
+} from '../types/filesystem.type.js';
 import {
   assertNoProtectedEnvironmentFiles,
   ensureDestinationDoesNotExist,
   FilesystemAccess,
   moveToTrash,
-} from '../filesystem.utils.js';
+} from '../utils/filesystem.utils.js';
 
 /** Handles directory listing, trees, creation, rename, and approval-controlled deletion. */
 @Injectable()
 export class DirectoryService {
   private readonly access: FilesystemAccess;
 
+  /** Creates the service and initializes its dependencies. */
   constructor(config: AppConfigService, approvals: ApprovalService) {
     this.access = new FilesystemAccess(config, approvals);
   }

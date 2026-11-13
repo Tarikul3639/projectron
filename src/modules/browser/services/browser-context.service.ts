@@ -8,6 +8,7 @@ import { BrowserSessionService } from './browser-session.service.js';
 /** Manages page evaluation, isolated context data, and approved local file uploads. */
 @Injectable()
 export class BrowserContextService {
+  /** Creates the service and initializes its dependencies. */
   constructor(
     private readonly sessions: BrowserSessionService,
     private readonly config: AppConfigService,
@@ -19,7 +20,7 @@ export class BrowserContextService {
       throw new BadRequestException('Browser expression is too large');
     return this.sessions
       .getPage(input.pageId)
-      .page.evaluate((source) => (0, eval)(source), input.expression);
+      .page.evaluate(input.expression);
   }
 
   /** Reads cookies while redacting their values. */

@@ -8,13 +8,14 @@ import { lstat, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
 import { ApprovalService } from '../../approval/services/approval.service.js';
-import { FilesystemAccess } from '../filesystem.utils.js';
+import { FilesystemAccess } from '../utils/filesystem.utils.js';
 
 /** Handles exact text edits, line-range reads, and bounded workspace searches. */
 @Injectable()
 export class FileEditService {
   private readonly access: FilesystemAccess;
 
+  /** Creates the service and initializes its dependencies. */
   constructor(config: AppConfigService, approvals: ApprovalService) {
     this.access = new FilesystemAccess(config, approvals);
   }

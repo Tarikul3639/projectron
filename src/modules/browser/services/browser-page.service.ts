@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { Dialog, Request } from 'playwright';
 import { BrowserSessionService } from './browser-session.service.js';
-import { assertSafeBrowserUrl } from '../browser.utils.js';
+import { assertSafeBrowserUrl } from '../utils/browser.utils.js';
 
 // Handles page navigation, DOM inspection, interaction, and browser diagnostics.
+/** Provides the browser page functionality for this module. */
 @Injectable()
 export class BrowserPageService {
   private readonly requests = new Map<
@@ -25,6 +26,7 @@ export class BrowserPageService {
     string,
     Array<{ message: string; stack?: string }>
   >();
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly sessions: BrowserSessionService) {}
 
   /** Checks initial and redirected requests before allowing the browser to reach a host. */

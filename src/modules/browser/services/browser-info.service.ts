@@ -4,6 +4,7 @@ import { AppConfigService } from '../../../config/config.service.js';
 /** Reports browser engine capabilities and configured filesystem boundaries. */
 @Injectable()
 export class BrowserInfoService {
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly config: AppConfigService) {}
 
   /** Returns the supported browser features and operational restrictions. */

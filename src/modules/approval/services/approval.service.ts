@@ -25,6 +25,7 @@ export class ApprovalService implements OnModuleInit {
   private readonly requests = new Map<string, ApprovalRequest>();
   private persistenceQueue: Promise<void> = Promise.resolve();
 
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly storage: JsonStorageService) {}
 
   /** Restores approval history and expires pending requests whose deadlines passed while offline. */

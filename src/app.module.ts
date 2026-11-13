@@ -6,6 +6,7 @@ import { DocumentsModule } from './modules/documents/documents.module.js';
 import { FilesystemModule } from './modules/filesystem/filesystem.module.js';
 import { McpModule } from './modules/mcp/mcp.module.js';
 import { NetworkModule } from './modules/network/network.module.js';
+import { OrchestrationModule } from './modules/orchestration/orchestration.module.js';
 import { ProcessesModule } from './modules/processes/processes.module.js';
 import { ApprovalModule } from './modules/approval/approval.module.js';
 import { ProjectsModule } from './modules/projects/projects.module.js';
@@ -24,6 +25,7 @@ import { TerminalModule } from './modules/terminal/terminal.module.js';
     TerminalModule,
     ProcessesModule,
     ProjectsModule,
+    OrchestrationModule,
     NetworkModule,
     SystemModule,
     McpModule,

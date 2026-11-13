@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { DocumentTemplateInput } from '../documents.type.js';
+import type { DocumentTemplateInput } from '../types/documents.type.js';
 
 /** Produces structured starter content for common software-project documents. */
 @Injectable()

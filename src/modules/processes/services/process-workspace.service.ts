@@ -7,20 +7,24 @@ import { mkdir, realpath } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
 
+/** Provides the process workspace functionality for this module. */
 @Injectable()
 export class ProcessWorkspaceService {
   private readonly roots: string[];
+  /** Creates the service and initializes its dependencies. */
   constructor(config: AppConfigService) {
     this.roots = config.filesystemAllowedRoots
       .split(/[:;]/)
       .map((item) => resolve(item.trim()))
       .filter(Boolean);
   }
+  /** Initializes the resources required by this component. */
   async onModuleInit(): Promise<void> {
     await Promise.all(
       this.roots.map((root) => mkdir(root, { recursive: true })),
     );
   }
+  /** Handles resolve working directory for the component. */
   async resolveWorkingDirectory(path: string): Promise<string> {
     const requested = isAbsolute(path)
       ? resolve(path)

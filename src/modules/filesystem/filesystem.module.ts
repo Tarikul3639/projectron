@@ -5,7 +5,7 @@ import { FileService } from './services/file.service.js';
 import { DirectoryService } from './services/directory.service.js';
 import { FileEditService } from './services/file-edit.service.js';
 import { FileTransferService } from './services/file-transfer.service.js';
-import { FilesystemTools } from './filesystem.tools.js';
+import { FilesystemTools } from './tools/filesystem.tools.js';
 
 // Registers the four focused filesystem services and their single MCP tools provider.
 @Module({

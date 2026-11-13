@@ -5,8 +5,10 @@ import { AppConfigService } from '../../../config/config.service.js';
 import { BrowserSessionService } from './browser-session.service.js';
 
 // Saves browser downloads only inside configured workspace roots.
+/** Provides the browser download functionality for this module. */
 @Injectable()
 export class BrowserDownloadService {
+  /** Creates the service and initializes its dependencies. */
   constructor(
     private readonly sessions: BrowserSessionService,
     private readonly config: AppConfigService,

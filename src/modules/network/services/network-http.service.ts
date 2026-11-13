@@ -8,7 +8,7 @@ import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { isIP } from 'node:net';
 import { NetworkAddressService } from './network-address.service.js';
-import type { HttpRequestInput } from '../network.type.js';
+import type { HttpRequestInput } from '../types/network.type.js';
 
 const REDIRECT_CODES = new Set([301, 302, 303, 307, 308]);
 const MAX_REDIRECTS = 3;
@@ -16,6 +16,7 @@ const MAX_REDIRECTS = 3;
 /** Sends bounded HTTP requests to validated public destinations. */
 @Injectable()
 export class NetworkHttpService {
+  /** Creates the service and initializes its dependencies. */
   constructor(private readonly addresses: NetworkAddressService) {}
 
   /** Sends an HTTP request to a validated public destination and bounds its response. */
