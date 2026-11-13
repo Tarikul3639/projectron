@@ -69,38 +69,56 @@ export class FilesystemAccess {
   async resolve(path: string, rootIndex = 0): Promise<string> {
     // Deny every direct access to real environment files; .env.example remains usable.
     assertEnvironmentFileIsNotProtected(path);
-    if (!path.trim() || isAbsolute(path))
+
+    if (!path.trim() || isAbsolute(path)) {
       throw new BadRequestException('A non-empty relative path is required');
+    }
+
     const root = this.allowedRoots[rootIndex];
-    if (!root) throw new BadRequestException('Invalid allowed root index');
+    if (!root) {
+      throw new BadRequestException('Invalid allowed root index');
+    }
+
     const rootReal = await realpath(root);
     const target = resolve(rootReal, path);
     const rel = relative(rootReal, target);
-    if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel))
+
+    if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
       throw new ForbiddenException(
         'Path is outside the configured allowed root',
       );
+    }
+
     let ancestor = target;
     while (true) {
       try {
         const actual = await realpath(ancestor);
         const actualRel = relative(rootReal, actual);
+
         if (
           actualRel === '..' ||
           actualRel.startsWith(`..${sep}`) ||
           isAbsolute(actualRel)
-        )
+        ) {
           throw new ForbiddenException(
             'Path resolves outside the configured allowed root',
           );
+        }
         break;
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error;
+        }
+
         const parent = dirname(ancestor);
-        if (parent === ancestor) throw error;
+        if (parent === ancestor) {
+          throw error;
+        }
+
         ancestor = parent;
       }
     }
+
     return target;
   }
 
@@ -112,21 +130,26 @@ export class FilesystemAccess {
     reason: string,
   ): void {
     if (!this.approvalRequired) return;
+
     if (!id) {
       const request = this.approvals.createRequest({
         clientId,
         action,
         reason,
       });
+
       throw new ConflictException({
         message: 'User approval is required before this operation can continue',
         approvalRequestId: request.id,
       });
     }
-    if (this.usedApprovalIds.has(id))
+
+    if (this.usedApprovalIds.has(id)) {
       throw new ForbiddenException(
         'This approval request has already been used',
       );
+    }
+
     const request = this.approvals.getRequest(id);
     if (
       !request ||
@@ -136,6 +159,7 @@ export class FilesystemAccess {
     ) {
       throw new ForbiddenException('A matching approved request is required');
     }
+
     this.usedApprovalIds.add(id);
   }
 }
@@ -158,7 +182,9 @@ export async function pathExists(path: string): Promise<boolean> {
     await lstat(path);
     return true;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return false;
+    }
     throw error;
   }
 }
@@ -171,7 +197,9 @@ export async function ensureDestinationDoesNotExist(
     await lstat(path);
     throw new ConflictException('Destination already exists');
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
   }
 }
 
@@ -182,7 +210,10 @@ export async function moveToTrash(
   directory = false,
 ): Promise<void> {
   // A parent directory cannot be removed if it contains any protected environment file.
-  if (directory) await assertNoProtectedEnvironmentFiles(path);
+  if (directory) {
+    await assertNoProtectedEnvironmentFiles(path);
+  }
+
   const dataHome =
     process.env.XDG_DATA_HOME || resolve(homedir(), '.local', 'share');
   const files = resolve(dataHome, 'Trash', 'files');
@@ -191,16 +222,22 @@ export async function moveToTrash(
   const trashed = resolve(files, name);
   const infoPath = resolve(info, `${name}.trashinfo`);
   const metadata = `[Trash Info]\nPath=${encodeURI(path)}\nDeletionDate=${new Date().toISOString().slice(0, 19)}\n`;
+
   await mkdir(files, { recursive: true });
   await mkdir(info, { recursive: true });
   await writeFile(infoPath, metadata, { encoding: 'utf8', flag: 'wx' });
+
   try {
     try {
       await rename(path, trashed);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
-      if (symbolicLink) await symlink(await readlink(path), trashed);
-      else if (directory) {
+      if ((error as NodeJS.ErrnoException).code !== 'EXDEV') {
+        throw error;
+      }
+
+      if (symbolicLink) {
+        await symlink(await readlink(path), trashed);
+      } else if (directory) {
         await cp(path, trashed, {
           recursive: true,
           errorOnExist: true,

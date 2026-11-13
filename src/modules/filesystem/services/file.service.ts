@@ -28,9 +28,11 @@ import { FilesystemAccess, moveToTrash } from '../filesystem.utils.js';
 @Injectable()
 export class FileService {
   private readonly access: FilesystemAccess;
+
   constructor(config: AppConfigService, approvals: ApprovalService) {
     this.access = new FilesystemAccess(config, approvals);
   }
+
   /** Ensures configured workspace roots exist before tools are called. */
   onModuleInit(): Promise<void> {
     return this.access.initialize();
@@ -40,12 +42,14 @@ export class FileService {
   async read(input: ReadFileInput): Promise<string> {
     const path = await this.access.resolve(input.path, input.rootIndex);
     try {
-      if (!(await stat(path)).isFile())
+      if (!(await stat(path)).isFile()) {
         throw new BadRequestException('Path is not a file');
+      }
       return await readFile(path, 'utf8');
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new NotFoundException('File not found');
+      }
       throw error;
     }
   }
@@ -57,17 +61,24 @@ export class FileService {
     try {
       metadata = await lstat(path);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
     }
-    if (metadata && !metadata.isFile())
+
+    if (metadata && !metadata.isFile()) {
       throw new BadRequestException('Path is not a regular file');
-    if (metadata)
+    }
+
+    if (metadata) {
       this.access.requireApproval(
         input.approvalRequestId,
         input.clientId,
         `filesystem.write:${input.rootIndex ?? 0}:${input.path}`,
         'Overwrite an existing file',
       );
+    }
+
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, input.content, {
       encoding: 'utf8',
@@ -82,20 +93,31 @@ export class FileService {
     try {
       metadata = await lstat(path);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
     }
-    if (metadata && !metadata.isFile())
+
+    if (metadata && !metadata.isFile()) {
       throw new BadRequestException('Path is not a regular file');
-    if (metadata)
+    }
+
+    if (metadata) {
       this.access.requireApproval(
         input.approvalRequestId,
         input.clientId,
         `filesystem.append:${input.rootIndex ?? 0}:${input.path}`,
         'Append content to an existing file',
       );
+    }
+
     await mkdir(dirname(path), { recursive: true });
-    if (metadata) await appendFile(path, input.content, 'utf8');
-    else await writeFile(path, input.content, { encoding: 'utf8', flag: 'wx' });
+
+    if (metadata) {
+      await appendFile(path, input.content, 'utf8');
+    } else {
+      await writeFile(path, input.content, { encoding: 'utf8', flag: 'wx' });
+    }
   }
 
   /** Writes a bounded batch, requesting one approval for all existing destinations. */
@@ -103,10 +125,12 @@ export class FileService {
     succeeded: string[];
     failed: Array<{ path: string; error: string }>;
   }> {
-    if (new Set(input.items.map((x) => x.path)).size !== input.items.length)
+    if (new Set(input.items.map((x) => x.path)).size !== input.items.length) {
       throw new BadRequestException(
         'A batch cannot contain duplicate file paths',
       );
+    }
+
     const succeeded: string[] = [];
     const failed: Array<{ path: string; error: string }> = [];
     const prepared: Array<{
@@ -115,6 +139,7 @@ export class FileService {
       absolute: string;
       exists: boolean;
     }> = [];
+
     for (const item of input.items) {
       try {
         const absolute = await this.access.resolve(item.path, input.rootIndex);
@@ -122,10 +147,15 @@ export class FileService {
         try {
           metadata = await lstat(absolute);
         } catch (error) {
-          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            throw error;
+          }
         }
-        if (metadata && !metadata.isFile())
+
+        if (metadata && !metadata.isFile()) {
           throw new BadRequestException('Destination is not a regular file');
+        }
+
         prepared.push({ ...item, absolute, exists: Boolean(metadata) });
       } catch (error) {
         failed.push({
@@ -135,14 +165,17 @@ export class FileService {
         });
       }
     }
+
     const overwritten = prepared.filter((x) => x.exists).map((x) => x.path);
-    if (overwritten.length)
+    if (overwritten.length) {
       this.access.requireApproval(
         input.approvalRequestId,
         input.clientId,
         `filesystem.bulk-write:${input.rootIndex ?? 0}:${overwritten.join('|')}`,
         `Overwrite ${overwritten.length} existing file(s) in a batch write`,
       );
+    }
+
     for (const item of prepared) {
       try {
         await mkdir(dirname(item.absolute), { recursive: true });
@@ -160,6 +193,7 @@ export class FileService {
         });
       }
     }
+
     return { succeeded, failed };
   }
 
@@ -170,20 +204,25 @@ export class FileService {
     try {
       metadata = await lstat(path);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new NotFoundException('File not found');
+      }
       throw error;
     }
-    if (!metadata.isFile() && !metadata.isSymbolicLink())
+
+    if (!metadata.isFile() && !metadata.isSymbolicLink()) {
       throw new BadRequestException(
         'Only files and symbolic links can be moved to Trash',
       );
+    }
+
     this.access.requireApproval(
       input.approvalRequestId,
       input.clientId,
       `filesystem.delete:${input.rootIndex ?? 0}:${input.path}`,
       "Move a file to the user's Trash",
     );
+
     await moveToTrash(path, metadata.isSymbolicLink());
   }
 
@@ -200,13 +239,18 @@ export class FileService {
       !Number.isSafeInteger(input.length) ||
       input.length < 1 ||
       input.length > 1_048_576
-    )
+    ) {
       throw new BadRequestException(
         'Invalid chunk offset or length (maximum 1 MiB)',
       );
+    }
+
     const path = await this.access.resolve(input.path, input.rootIndex);
     const metadata = await stat(path);
-    if (!metadata.isFile()) throw new BadRequestException('Path is not a file');
+    if (!metadata.isFile()) {
+      throw new BadRequestException('Path is not a file');
+    }
+
     const handle = await open(path, 'r');
     try {
       const buffer = Buffer.alloc(
@@ -218,6 +262,7 @@ export class FileService {
         buffer.length,
         input.offset,
       );
+
       return {
         data: buffer.subarray(0, bytesRead).toString('base64'),
         bytesRead,
