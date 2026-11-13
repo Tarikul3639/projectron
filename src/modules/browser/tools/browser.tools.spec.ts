@@ -1,30 +1,31 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   browserLaunchSchema,
   browserNavigateSchema,
   browserScreenshotSchema,
   browserUploadSchema,
 } from '../schemas/browser.schemas.js';
+import { McpApprovalService } from '../../approval/services/mcp-approval.service.js';
+import { BrowserContextService } from '../services/browser-context.service.js';
+import { BrowserInfoService } from '../services/browser-info.service.js';
+import { BrowserSessionService } from '../services/browser-session.service.js';
+import { BrowserPageService } from '../services/browser-page.service.js';
+import { BrowserArtifactService } from '../services/browser-artifact.service.js';
+import { BrowserDownloadService } from '../services/browser-download.service.js';
+import { BrowserTools } from './browser.tools.js';
 
-// Verifies MCP input validation and bounded browser operation parameters.
-describe('Browser MCP schemas', () => {
-  it('accepts bounded Chromium launch options', () => {
+describe('BrowserTools', () => {
+  it('validates bounded browser operation input contracts', () => {
     expect(
       browserLaunchSchema.safeParse({ headless: true, slowMo: 100 }).success,
     ).toBe(true);
     expect(browserLaunchSchema.safeParse({ slowMo: 3000 }).success).toBe(false);
-  });
-
-  it('only accepts HTTP and HTTPS navigation URLs', () => {
     expect(
       browserNavigateSchema.safeParse({ url: 'https://example.com' }).success,
     ).toBe(true);
     expect(
       browserNavigateSchema.safeParse({ url: 'file:///etc/passwd' }).success,
     ).toBe(false);
-  });
-
-  it('validates screenshot output formats and quality bounds', () => {
     expect(
       browserScreenshotSchema.safeParse({ type: 'png', quality: 80 }).success,
     ).toBe(true);
@@ -34,9 +35,6 @@ describe('Browser MCP schemas', () => {
     expect(browserScreenshotSchema.safeParse({ quality: 101 }).success).toBe(
       false,
     );
-  });
-
-  it('requires a client identity for local file upload approval', () => {
     expect(
       browserUploadSchema.safeParse({
         selector: 'input[type=file]',
@@ -50,5 +48,23 @@ describe('Browser MCP schemas', () => {
         filePaths: ['/workspace/a.txt'],
       }).success,
     ).toBe(false);
+  });
+
+  it('delegates capability discovery to the browser information service', () => {
+    const info = {
+      capabilities: vi.fn().mockReturnValue({ features: ['navigation'] }),
+    };
+    const tools = new BrowserTools(
+      {} as unknown as BrowserContextService,
+      info as unknown as BrowserInfoService,
+      {} as unknown as BrowserSessionService,
+      {} as unknown as BrowserPageService,
+      {} as unknown as BrowserArtifactService,
+      {} as unknown as BrowserDownloadService,
+      {} as unknown as McpApprovalService,
+    );
+
+    expect(tools.capabilities()).toEqual({ features: ['navigation'] });
+    expect(info.capabilities).toHaveBeenCalledOnce();
   });
 });

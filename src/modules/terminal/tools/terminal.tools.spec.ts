@@ -1,5 +1,8 @@
 import { ConflictException } from '@nestjs/common';
+import type { McpContext } from '@nestjs/mcp';
 import { describe, expect, it, vi } from 'vitest';
+import { ApprovalService } from '../../approval/services/approval.service.js';
+import { TerminalService } from '../services/terminal.service.js';
 import { TerminalTools } from './terminal.tools.js';
 
 // Provides the MCP context fields used by the modern multi-round-trip flow.
@@ -15,7 +18,7 @@ function createModernContext(
         inputResponses,
       },
     },
-  } as never;
+  } as unknown as McpContext;
 }
 
 // Verifies MCP terminal tool behavior without spawning real local processes.
@@ -23,7 +26,10 @@ describe('TerminalTools', () => {
   it('delegates an execution request to TerminalService', async () => {
     const execute = vi.fn().mockResolvedValue({ exitCode: 0, stdout: 'ok' });
     const approvals = { getRequest: vi.fn() };
-    const tools = new TerminalTools({ execute } as never, approvals as never);
+    const tools = new TerminalTools(
+      { execute } as unknown as TerminalService,
+      approvals as unknown as ApprovalService,
+    );
     const input = {
       command: 'echo',
       args: ['ok'],
@@ -58,7 +64,10 @@ describe('TerminalTools', () => {
       })),
       decide: vi.fn(),
     };
-    const tools = new TerminalTools({ execute } as never, approvals as never);
+    const tools = new TerminalTools(
+      { execute } as unknown as TerminalService,
+      approvals as unknown as ApprovalService,
+    );
 
     const result = await tools.execute(
       {
@@ -100,7 +109,10 @@ describe('TerminalTools', () => {
       getRequest: vi.fn(() => pendingRequest),
       decide: vi.fn(),
     };
-    const tools = new TerminalTools({ execute } as never, approvals as never);
+    const tools = new TerminalTools(
+      { execute } as unknown as TerminalService,
+      approvals as unknown as ApprovalService,
+    );
     const input = {
       command: 'echo',
       args: ['approved'],
@@ -150,7 +162,10 @@ describe('TerminalTools', () => {
       })),
       decide: vi.fn(),
     };
-    const tools = new TerminalTools({ execute } as never, approvals as never);
+    const tools = new TerminalTools(
+      { execute } as unknown as TerminalService,
+      approvals as unknown as ApprovalService,
+    );
     const input = {
       command: 'echo',
       args: ['rejected'],

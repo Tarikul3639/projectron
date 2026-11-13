@@ -1,11 +1,14 @@
 import 'reflect-metadata';
 import { describe, expect, it, vi } from 'vitest';
 import * as schemas from '../schemas/filesystem.schemas.js';
+import { FileService } from '../services/file.service.js';
+import { DirectoryService } from '../services/directory.service.js';
+import { FileEditService } from '../services/file-edit.service.js';
+import { FileTransferService } from '../services/file-transfer.service.js';
 import { FilesystemTools } from './filesystem.tools.js';
 
-// Verifies the public MCP schemas and the service routing of the tools provider.
 describe('FilesystemTools', () => {
-  it('validates the file-edit and search contracts', () => {
+  it('validates the public file-edit and search input contracts', () => {
     expect(
       schemas.editFileInputSchema.safeParse({
         path: 'a.txt',
@@ -32,61 +35,36 @@ describe('FilesystemTools', () => {
       }).success,
     ).toBe(true);
   });
-  it('routes each group of tools to its focused service', async () => {
-    const files = {
-      read: vi.fn(),
-      write: vi.fn(),
-      append: vi.fn(),
-      writeMultiple: vi.fn(),
-      delete: vi.fn(),
-      readFileChunk: vi.fn(),
-    };
-    const directories = {
-      list: vi.fn(),
-      getTree: vi.fn(),
-      createDirectory: vi.fn(),
-      deleteDirectory: vi.fn(),
-      renameDirectory: vi.fn(),
-      deleteMultiple: vi.fn(),
-      createMultipleDirectories: vi.fn(),
-    };
+
+  it('routes tool calls to their focused services', async () => {
+    const files = { read: vi.fn().mockResolvedValue({ path: 'a.txt' }) };
+    const directories = { list: vi.fn().mockResolvedValue({ entries: [] }) };
     const edits = {
-      edit: vi.fn(),
-      readRange: vi.fn(),
-      searchFiles: vi.fn(),
-      searchInFiles: vi.fn(),
+      edit: vi.fn().mockResolvedValue({ path: 'a.txt' }),
     };
     const transfers = {
-      copyFile: vi.fn(),
-      moveFile: vi.fn(),
-      copyDirectory: vi.fn(),
-      moveDirectory: vi.fn(),
-      copyMultiple: vi.fn(),
-      moveMultiple: vi.fn(),
-      beginFileUpload: vi.fn(),
-      writeFileChunk: vi.fn(),
-      finishFileUpload: vi.fn(),
-      getFileUploadStatus: vi.fn(),
-      abortFileUpload: vi.fn(),
+      copyFile: vi.fn().mockResolvedValue({ path: 'b.txt' }),
     };
     const tools = new FilesystemTools(
-      files as never,
-      directories as never,
-      edits as never,
-      transfers as never,
+      files as unknown as FileService,
+      directories as unknown as DirectoryService,
+      edits as unknown as FileEditService,
+      transfers as unknown as FileTransferService,
     );
+
     await tools.read({ path: 'a.txt' });
     await tools.list({});
     await tools.edit({
       path: 'a.txt',
       oldText: 'x',
       newText: 'y',
-      clientId: 'c',
+      clientId: 'client',
     });
     await tools.copyFile({ path: 'a.txt', destination: 'b.txt' });
-    expect(files.read).toHaveBeenCalled();
-    expect(directories.list).toHaveBeenCalled();
-    expect(edits.edit).toHaveBeenCalled();
-    expect(transfers.copyFile).toHaveBeenCalled();
+
+    expect(files.read).toHaveBeenCalledWith({ path: 'a.txt' });
+    expect(directories.list).toHaveBeenCalledWith({});
+    expect(edits.edit).toHaveBeenCalledOnce();
+    expect(transfers.copyFile).toHaveBeenCalledOnce();
   });
 });
