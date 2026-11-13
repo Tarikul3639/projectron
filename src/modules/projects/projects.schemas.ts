@@ -1,6 +1,6 @@
 import * as z from 'zod';
 
-const metadataSchema = z.record(z.string(), z.unknown()).optional();
+const metadataSchema = z.record(z.string(), z.json()).optional();
 
 export const createProjectSchema = z
   .object({

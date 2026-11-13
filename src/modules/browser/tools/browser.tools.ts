@@ -795,7 +795,7 @@ export class BrowserTools {
     inputSchema: z
       .object({
         pageId: z.string().uuid().optional(),
-        cookies: z.array(z.record(z.string(), z.unknown())).min(1).max(100),
+        cookies: z.array(z.record(z.string(), z.json())).min(1).max(100),
         clientId: z.string().min(1).max(128),
       })
       .strict(),

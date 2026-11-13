@@ -16,7 +16,7 @@ export const createOrchestrationPlanSchema = z.object({
           .regex(/^[a-zA-Z0-9_-]+$/),
         title: z.string().trim().min(1).max(200),
         toolName: z.string().trim().min(1).max(128),
-        input: z.record(z.string(), z.unknown()).optional(),
+        input: z.record(z.string(), z.json()).optional(),
         dependsOn: z.array(z.string().trim().min(1).max(64)).max(50).optional(),
         requiresApproval: z.boolean().optional(),
         maxAttempts: z.number().int().min(1).max(5).optional(),
@@ -51,6 +51,6 @@ export const updateOrchestrationStepSchema = z.object({
     'failed',
     'skipped',
   ]),
-  result: z.unknown().optional(),
+  result: z.json().optional(),
   error: z.string().max(4_000).optional(),
 });
