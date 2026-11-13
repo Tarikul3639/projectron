@@ -15,6 +15,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "start:mcp:stdio": "node dist/modules/mcp/transports/stdio.transport.js",
+    "start:mcp:inspector" : "pnpm dlx @modelcontextprotocol/inspector",
     "lint": "oxlint --type-aware src/ test/",
     "test": "vitest run",
     "test:watch": "vitest",
