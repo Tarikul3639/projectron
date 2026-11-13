@@ -4,7 +4,7 @@ import type { Environment } from './app.config.js';
 
 @Injectable()
 export class AppConfigService {
-  constructor(private readonly configService: ConfigService) { }
+  constructor(private readonly configService: ConfigService) {}
 
   /**
    * Returns a validated environment value with its inferred TypeScript type.

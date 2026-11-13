@@ -218,3 +218,37 @@ export const createMultipleDirectoriesInputSchema = z
     rootIndex: rootIndexSchema,
   })
   .strict();
+
+/** Defines an approval-controlled append to a UTF-8 file. */
+export const appendFileInputSchema = writeFileInputSchema;
+/** Defines an exact-match replacement request for an existing text file. */
+export const editFileInputSchema = z
+  .object({
+    path: relativePathSchema,
+    oldText: z.string().min(1),
+    newText: z.string(),
+    clientId: clientIdSchema,
+    approvalRequestId: approvalIdSchema,
+    rootIndex: rootIndexSchema,
+  })
+  .strict();
+/** Defines a one-based inclusive line range read. */
+export const readFileRangeInputSchema = z
+  .object({
+    path: relativePathSchema,
+    startLine: z.number().int().min(1),
+    endLine: z.number().int().min(1),
+    rootIndex: rootIndexSchema,
+  })
+  .strict();
+/** Defines a bounded recursive filename search. */
+export const searchFilesInputSchema = z
+  .object({
+    query: z.string().min(1),
+    path: z.string().optional(),
+    maxResults: z.number().int().min(1).max(500).optional(),
+    rootIndex: rootIndexSchema,
+  })
+  .strict();
+/** Defines a bounded recursive search inside UTF-8 text files. */
+export const searchInFilesInputSchema = searchFilesInputSchema;

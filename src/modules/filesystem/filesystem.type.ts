@@ -47,3 +47,20 @@ export type BulkPathPairsInput = z.infer<typeof bulkPathPairsInputSchema>;
 export type CreateMultipleDirectoriesInput = z.infer<
   typeof createMultipleDirectoriesInputSchema
 >;
+
+// Additional text-edit and search inputs are inferred from their MCP Zod schemas.
+export type AppendFileInput = z.infer<
+  typeof import('./filesystem.schemas.js').appendFileInputSchema
+>;
+export type EditFileInput = z.infer<
+  typeof import('./filesystem.schemas.js').editFileInputSchema
+>;
+export type ReadFileRangeInput = z.infer<
+  typeof import('./filesystem.schemas.js').readFileRangeInputSchema
+>;
+export type SearchFilesInput = z.infer<
+  typeof import('./filesystem.schemas.js').searchFilesInputSchema
+>;
+export type SearchInFilesInput = z.infer<
+  typeof import('./filesystem.schemas.js').searchInFilesInputSchema
+>;

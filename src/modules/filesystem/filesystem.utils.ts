@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   copyFile,
+  cp,
   lstat,
   mkdir,
   realpath,
@@ -19,14 +20,114 @@ import {
 import { homedir } from 'node:os';
 import {
   basename,
+  delimiter,
   dirname,
   isAbsolute,
   relative,
   resolve,
   sep,
 } from 'node:path';
+import { AppConfigService } from '../../config/config.service.js';
+import { ApprovalService } from '../security/approval.service.js';
 
-/** Checks whether a filesystem path exists without following symbolic links. */
+/** Shared filesystem boundary: allowed roots, safe path resolution, and one-use approvals. */
+export class FilesystemAccess {
+  readonly allowedRoots: string[];
+  private readonly approvalRequired: boolean;
+  private readonly usedApprovalIds = new Set<string>();
+
+  constructor(
+    config: AppConfigService,
+    private readonly approvals: ApprovalService,
+  ) {
+    this.allowedRoots = config.filesystemAllowedRoots
+      .split(delimiter)
+      .map((root) => resolve(root.trim()))
+      .filter(Boolean);
+    this.approvalRequired = config.approvalRequired;
+  }
+
+  /** Creates the configured workspace roots during module initialization. */
+  async initialize(): Promise<void> {
+    await Promise.all(
+      this.allowedRoots.map((root) => mkdir(root, { recursive: true })),
+    );
+  }
+
+  /** Resolves a relative path while blocking traversal and symlink escapes. */
+  async resolve(path: string, rootIndex = 0): Promise<string> {
+    if (!path.trim() || isAbsolute(path))
+      throw new BadRequestException('A non-empty relative path is required');
+    const root = this.allowedRoots[rootIndex];
+    if (!root) throw new BadRequestException('Invalid allowed root index');
+    const rootReal = await realpath(root);
+    const target = resolve(rootReal, path);
+    const rel = relative(rootReal, target);
+    if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel))
+      throw new ForbiddenException(
+        'Path is outside the configured allowed root',
+      );
+    let ancestor = target;
+    while (true) {
+      try {
+        const actual = await realpath(ancestor);
+        const actualRel = relative(rootReal, actual);
+        if (
+          actualRel === '..' ||
+          actualRel.startsWith(`..${sep}`) ||
+          isAbsolute(actualRel)
+        )
+          throw new ForbiddenException(
+            'Path resolves outside the configured allowed root',
+          );
+        break;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        const parent = dirname(ancestor);
+        if (parent === ancestor) throw error;
+        ancestor = parent;
+      }
+    }
+    return target;
+  }
+
+  /** Requests approval or validates a matching, unused approval request. */
+  requireApproval(
+    id: string | undefined,
+    clientId: string,
+    action: string,
+    reason: string,
+  ): void {
+    if (!this.approvalRequired) return;
+    if (!id) {
+      const request = this.approvals.createRequest({
+        clientId,
+        action,
+        reason,
+      });
+      throw new ConflictException({
+        message: 'User approval is required before this operation can continue',
+        approvalRequestId: request.id,
+      });
+    }
+    if (this.usedApprovalIds.has(id))
+      throw new ForbiddenException(
+        'This approval request has already been used',
+      );
+    const request = this.approvals.getRequest(id);
+    if (
+      !request ||
+      request.status !== 'approved' ||
+      request.clientId !== clientId ||
+      request.action !== action
+    ) {
+      throw new ForbiddenException('A matching approved request is required');
+    }
+    this.usedApprovalIds.add(id);
+  }
+}
+
+/** Checks path existence without following symbolic links. */
 export async function pathExists(path: string): Promise<boolean> {
   try {
     await lstat(path);
@@ -37,119 +138,59 @@ export async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-/** Prevents a filesystem operation from silently replacing an existing destination. */
+/** Prevents an operation from replacing an existing destination. */
 export async function ensureDestinationDoesNotExist(
-  destination: string,
+  path: string,
 ): Promise<void> {
   try {
-    await lstat(destination);
+    await lstat(path);
     throw new ConflictException('Destination already exists');
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }
 }
 
-/** Stores an entry in the standard XDG Trash directory with restore metadata. */
+/** Moves an entry to XDG Trash and writes its restore metadata. */
 export async function moveToTrash(
-  filePath: string,
-  isSymbolicLink: boolean,
-  isDirectory = false,
+  path: string,
+  symbolicLink: boolean,
+  directory = false,
 ): Promise<void> {
   const dataHome =
     process.env.XDG_DATA_HOME || resolve(homedir(), '.local', 'share');
-  const trashRoot = resolve(dataHome, 'Trash');
-  const filesDirectory = resolve(trashRoot, 'files');
-  const infoDirectory = resolve(trashRoot, 'info');
-  const trashName = `${cryptoRandomId()}-${basename(filePath)}`;
-  const trashedFile = resolve(filesDirectory, trashName);
-  const infoFile = resolve(infoDirectory, `${trashName}.trashinfo`);
-  const deletedAt = new Date().toISOString().slice(0, 19);
-  const trashInfo = `[Trash Info]\\nPath=${encodeURI(filePath)}\\nDeletionDate=${deletedAt}\\n`;
-
-  await mkdir(filesDirectory, { recursive: true });
-  await mkdir(infoDirectory, { recursive: true });
-  await writeFile(infoFile, trashInfo, { encoding: 'utf8', flag: 'wx' });
-
+  const files = resolve(dataHome, 'Trash', 'files');
+  const info = resolve(dataHome, 'Trash', 'info');
+  const name = `${randomUUID()}-${basename(path)}`;
+  const trashed = resolve(files, name);
+  const infoPath = resolve(info, `${name}.trashinfo`);
+  const metadata = `[Trash Info]\nPath=${encodeURI(path)}\nDeletionDate=${new Date().toISOString().slice(0, 19)}\n`;
+  await mkdir(files, { recursive: true });
+  await mkdir(info, { recursive: true });
+  await writeFile(infoPath, metadata, { encoding: 'utf8', flag: 'wx' });
   try {
     try {
-      await rename(filePath, trashedFile);
+      await rename(path, trashed);
     } catch (error) {
-      // Cross-device moves need a copy-and-remove fallback.
       if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
-      if (isSymbolicLink) {
-        await symlink(await readlink(filePath), trashedFile);
-      } else if (isDirectory) {
-        const { cp } = await import('node:fs/promises');
-        await cp(filePath, trashedFile, {
+      if (symbolicLink) await symlink(await readlink(path), trashed);
+      else if (directory) {
+        await cp(path, trashed, {
           recursive: true,
           errorOnExist: true,
           force: false,
           dereference: false,
         });
-        await rm(filePath, { recursive: true });
+        await rm(path, { recursive: true });
       } else {
-        await copyFile(filePath, trashedFile);
-        await unlink(filePath);
+        await copyFile(path, trashed);
+        await unlink(path);
       }
     }
   } catch (error) {
     await Promise.all([
-      rm(infoFile, { force: true }),
-      rm(trashedFile, { force: true, recursive: true }),
+      rm(infoPath, { force: true }),
+      rm(trashed, { force: true, recursive: true }),
     ]);
     throw error;
   }
-}
-
-/** Resolves a relative path and blocks traversal or symlink escapes from an allowed root. */
-export async function resolveSafePath(
-  path: string,
-  allowedRoots: string[],
-  rootIndex = 0,
-): Promise<string> {
-  if (!path.trim() || isAbsolute(path)) {
-    throw new BadRequestException('A non-empty relative path is required');
-  }
-  const root = allowedRoots[rootIndex];
-  if (!root) throw new BadRequestException('Invalid allowed root index');
-  const rootRealPath = await realpath(root);
-  const target = resolve(rootRealPath, path);
-  const fromRoot = relative(rootRealPath, target);
-  if (
-    fromRoot === '..' ||
-    fromRoot.startsWith(`..${sep}`) ||
-    isAbsolute(fromRoot)
-  ) {
-    throw new ForbiddenException('Path is outside the configured allowed root');
-  }
-
-  // Resolve the nearest existing ancestor to detect symlinks escaping the root.
-  let existingPath = target;
-  while (true) {
-    try {
-      const actualPath = await realpath(existingPath);
-      const actualRelative = relative(rootRealPath, actualPath);
-      if (
-        actualRelative === '..' ||
-        actualRelative.startsWith(`..${sep}`) ||
-        isAbsolute(actualRelative)
-      ) {
-        throw new ForbiddenException(
-          'Path resolves outside the configured allowed root',
-        );
-      }
-      break;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      const parent = dirname(existingPath);
-      if (parent === existingPath) throw error;
-      existingPath = parent;
-    }
-  }
-  return target;
-}
-
-/** Generates a unique identifier for a trash entry. */
-function cryptoRandomId(): string {
-  return randomUUID();
 }
