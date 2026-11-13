@@ -7,7 +7,7 @@ import {
 import { lstat, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
-import { ApprovalService } from '../../security/approval.service.js';
+import { ApprovalService } from '../../approval/services/approval.service.js';
 import { FilesystemAccess } from '../filesystem.utils.js';
 
 /** Handles exact text edits, line-range reads, and bounded workspace searches. */

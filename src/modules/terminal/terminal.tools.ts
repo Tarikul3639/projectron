@@ -11,7 +11,7 @@ import {
 } from '@modelcontextprotocol/server';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import * as z from 'zod';
-import { ApprovalService } from '../security/approval.service.js';
+import { ApprovalService } from '../approval/services/approval.service.js';
 import { executeCommandInputSchema } from './terminal.schemas.js';
 import type { ExecuteCommandInput } from './terminal.type.js';
 import { TerminalService } from './terminal.service.js';

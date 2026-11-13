@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, realpath } from 'node:fs/promises';
 import { delimiter, isAbsolute, relative, resolve, sep } from 'node:path';
 import { AppConfigService } from '../../config/config.service.js';
-import { ApprovalService } from '../security/approval.service.js';
+import { ApprovalService } from '../approval/services/approval.service.js';
 import type { ExecuteCommandInput } from './terminal.type.js';
 import type { CommandExecutionResult } from './terminal.interface.js';
 

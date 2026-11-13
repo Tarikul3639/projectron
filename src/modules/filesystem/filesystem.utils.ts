@@ -29,7 +29,7 @@ import {
   sep,
 } from 'node:path';
 import { AppConfigService } from '../../config/config.service.js';
-import { ApprovalService } from '../security/approval.service.js';
+import { ApprovalService } from '../approval/services/approval.service.js';
 
 /** Blocks direct access to .env files while allowing the documented .env.example template. */
 export function assertEnvironmentFileIsNotProtected(path: string): void {

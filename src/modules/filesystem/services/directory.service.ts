@@ -6,7 +6,7 @@ import {
 import { lstat, mkdir, readdir, rename } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
-import { ApprovalService } from '../../security/approval.service.js';
+import { ApprovalService } from '../../approval/services/approval.service.js';
 import type {
   CreateDirectoryInput,
   DeleteFileInput,

@@ -1,4 +1,4 @@
-import type { ApprovalStatus } from './approval-status.type.js';
+import type { ApprovalStatus } from '../types/approval-status.type.js';
 
 // Represents an approval request created by an MCP client.
 export interface ApprovalRequest {

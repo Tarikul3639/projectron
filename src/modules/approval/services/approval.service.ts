@@ -9,10 +9,10 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { randomUUID } from 'node:crypto';
-import { JsonStorageService } from '../storage/json-storage.service.js';
-import { CreateApprovalRequestDto } from './create-approval-request.dto.js';
-import type { ApprovalRequest } from './approval-request.interface.js';
-import type { ApprovalStatus } from './approval-status.type.js';
+import { JsonStorageService } from '../../storage/json-storage.service.js';
+import { CreateApprovalRequestDto } from '../dto/create-approval-request.dto.js';
+import type { ApprovalRequest } from '../interfaces/approval-request.interface.js';
+import type { ApprovalStatus } from '../types/approval-status.type.js';
 
 const APPROVALS_FILE = 'approvals/requests.json';
 
