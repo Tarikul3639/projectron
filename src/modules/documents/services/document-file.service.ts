@@ -120,6 +120,67 @@ export class DocumentFileService {
     };
   }
 
+  /** Reads a bounded binary document after enforcing workspace and protected-file rules. */
+  async readBinary(
+    value: string,
+    rootIndex = 0,
+    maxBytes = 50 * 1024 * 1024,
+  ): Promise<{ buffer: Buffer; bytes: number; modifiedAt: string }> {
+    const path = await this.resolveExisting(value, rootIndex);
+    assertDocumentPathIsAllowed(path);
+    const metadata = await stat(path);
+    if (!metadata.isFile()) {
+      throw new BadRequestException('Document path is not a regular file');
+    }
+    if (metadata.size > maxBytes) {
+      throw new BadRequestException(
+        'Document exceeds the 50 MB binary-reading limit',
+      );
+    }
+    const buffer = await readFile(path);
+    return {
+      buffer,
+      bytes: metadata.size,
+      modifiedAt: metadata.mtime.toISOString(),
+    };
+  }
+
+  /** Writes a bounded binary document and refuses replacement unless explicitly requested. */
+  async writeBinary(
+    value: string,
+    content: Buffer,
+    overwrite = false,
+    rootIndex = 0,
+  ) {
+    const path = await this.resolveForWrite(value, rootIndex);
+    assertDocumentPathIsAllowed(path);
+    if (content.byteLength > 50 * 1024 * 1024) {
+      throw new BadRequestException(
+        'Document exceeds the 50 MB binary-writing limit',
+      );
+    }
+    const existing = await lstat(path).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return undefined;
+      throw error;
+    });
+    if (existing?.isSymbolicLink() || (existing && !existing.isFile())) {
+      throw new BadRequestException(
+        'Document destination must be a regular file, not a symlink or directory',
+      );
+    }
+    if (existing && !overwrite) {
+      throw new BadRequestException(
+        'Document already exists; set overwrite=true to replace it',
+      );
+    }
+    await writeFile(path, content, { flag: existing ? 'w' : 'wx' });
+    return {
+      path: value,
+      bytes: content.byteLength,
+      overwritten: Boolean(existing),
+    };
+  }
+
   /** Resolves an existing document and verifies its real path remains inside its selected root. */
   private async resolveExisting(value: string, rootIndex = 0): Promise<string> {
     const target = await this.resolveLexical(value, rootIndex);

@@ -36,7 +36,31 @@ src/
 
 ## Module boundaries
 
-Each feature module owns its services, validation schemas, and MCP tool provider. Tool providers expose capabilities; services implement the actual work. Shared concerns are kept in dedicated modules:
+Each feature module owns its services, validation schemas, and MCP tool provider. Tool providers expose capabilities; services implement the actual work. Documents keeps one MCP provider and one consolidated schema/type file while delegating DOCX, XLSX, PPTX, PDF, and conversion work to focused services. Shared concerns are kept in dedicated modules:
+
+### Documents module layout
+
+```text
+src/modules/documents/
+├── documents.module.ts
+├── tools/
+│   └── documents.tools.ts
+├── schemas/
+│   └── documents.schemas.ts
+├── types/
+│   └── documents.type.ts
+└── services/
+    ├── document-file.service.ts
+    ├── document-converter.service.ts
+    ├── document-template.service.ts
+    ├── word-document.service.ts
+    ├── spreadsheet-document.service.ts
+    ├── presentation-document.service.ts
+    ├── pdf-document.service.ts
+    └── office-converter.service.ts
+```
+
+The Documents module reuses the same workspace-root path checks for text and binary files. Binary helpers enforce a 50 MiB limit and reject symlink destinations. The MCP provider remains a single file; Office formats do not add separate tool-provider or schema files.
 
 - **Config** validates environment variables and provides typed settings.
 - **Storage** provides file and JSON persistence.
