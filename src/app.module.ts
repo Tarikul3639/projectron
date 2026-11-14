@@ -8,7 +8,6 @@ import { McpModule } from './modules/mcp/mcp.module.js';
 import { NetworkModule } from './modules/network/network.module.js';
 import { OrchestrationModule } from './modules/orchestration/orchestration.module.js';
 import { ProcessesModule } from './modules/processes/processes.module.js';
-import { ApprovalModule } from './modules/approval/approval.module.js';
 import { ProjectsModule } from './modules/projects/projects.module.js';
 import { StorageModule } from './modules/storage/storage.module.js';
 import { SystemModule } from './modules/system/system.module.js';
@@ -17,7 +16,6 @@ import { TerminalModule } from './modules/terminal/terminal.module.js';
 @Module({
   imports: [
     AppConfigModule,
-    ApprovalModule,
     StorageModule,
     BrowserModule,
     DocumentsModule,

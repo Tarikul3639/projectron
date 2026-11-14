@@ -19,7 +19,6 @@ describe('DocumentConverterService', () => {
     await service.convert({
       sourcePath: 'source.md',
       destinationPath: 'output.html',
-      clientId: 'test-client',
       overwrite: false,
     });
     expect(files.create).toHaveBeenCalledWith(
@@ -41,7 +40,6 @@ describe('DocumentConverterService', () => {
     await service.convert({
       sourcePath: 'source.csv',
       destinationPath: 'output.json',
-      clientId: 'test-client',
       overwrite: false,
     });
     expect(files.create).toHaveBeenCalledWith(

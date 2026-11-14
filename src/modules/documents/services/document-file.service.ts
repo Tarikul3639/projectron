@@ -100,7 +100,7 @@ export class DocumentFileService {
     }
     if (existing && !input.overwrite) {
       throw new BadRequestException(
-        'Document already exists; set overwrite=true and approve the operation to replace it',
+        'Document already exists; set overwrite=true to replace it',
       );
     }
     if (Buffer.byteLength(input.content, 'utf8') > MAX_DOCUMENT_BYTES) {

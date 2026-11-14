@@ -11,7 +11,6 @@ describe('DocumentTemplateService', () => {
         title: 'Projectron',
         path: 'README.md',
         overwrite: false,
-        clientId: 'test-client',
       }),
     ).toContain('# Projectron');
   });
@@ -23,7 +22,6 @@ describe('DocumentTemplateService', () => {
         title: 'Projectron',
         path: 'ARCHITECTURE.md',
         overwrite: false,
-        clientId: 'test-client',
       }),
     ).toContain('## Data Flow');
   });

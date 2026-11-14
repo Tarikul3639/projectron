@@ -14,7 +14,6 @@ import {
 } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
-import { ApprovalService } from '../../approval/services/approval.service.js';
 import type {
   DeleteFileInput,
   ReadFileInput,
@@ -30,8 +29,8 @@ export class FileService {
   private readonly access: FilesystemAccess;
 
   /** Creates the service and initializes its dependencies. */
-  constructor(config: AppConfigService, approvals: ApprovalService) {
-    this.access = new FilesystemAccess(config, approvals);
+  constructor(config: AppConfigService) {
+    this.access = new FilesystemAccess(config);
   }
 
   /** Ensures configured workspace roots exist before tools are called. */
@@ -55,7 +54,7 @@ export class FileService {
     }
   }
 
-  /** Creates a file or overwrites it after matching user approval. */
+  /** Creates a file or overwrites an existing regular file. */
   async write(input: WriteFileInput): Promise<void> {
     const path = await this.access.resolve(input.path, input.rootIndex);
     let metadata;
@@ -71,15 +70,6 @@ export class FileService {
       throw new BadRequestException('Path is not a regular file');
     }
 
-    if (metadata) {
-      await this.access.requireApproval(
-        input.approvalRequestId,
-        input.clientId,
-        `filesystem.write:${input.rootIndex ?? 0}:${input.path}`,
-        'Overwrite an existing file',
-      );
-    }
-
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, input.content, {
       encoding: 'utf8',
@@ -87,7 +77,7 @@ export class FileService {
     });
   }
 
-  /** Appends UTF-8 content; modifying an existing file requires approval. */
+  /** Appends UTF-8 content to a file, creating it when it does not exist. */
   async append(input: WriteFileInput): Promise<void> {
     const path = await this.access.resolve(input.path, input.rootIndex);
     let metadata;
@@ -103,15 +93,6 @@ export class FileService {
       throw new BadRequestException('Path is not a regular file');
     }
 
-    if (metadata) {
-      await this.access.requireApproval(
-        input.approvalRequestId,
-        input.clientId,
-        `filesystem.append:${input.rootIndex ?? 0}:${input.path}`,
-        'Append content to an existing file',
-      );
-    }
-
     await mkdir(dirname(path), { recursive: true });
 
     if (metadata) {
@@ -121,7 +102,7 @@ export class FileService {
     }
   }
 
-  /** Writes a bounded batch, requesting one approval for all existing destinations. */
+  /** Writes a bounded batch and reports individual failures. */
   async writeMultiple(input: WriteMultipleFilesInput): Promise<{
     succeeded: string[];
     failed: Array<{ path: string; error: string }>;
@@ -167,16 +148,6 @@ export class FileService {
       }
     }
 
-    const overwritten = prepared.filter((x) => x.exists).map((x) => x.path);
-    if (overwritten.length) {
-      await this.access.requireApproval(
-        input.approvalRequestId,
-        input.clientId,
-        `filesystem.bulk-write:${input.rootIndex ?? 0}:${overwritten.join('|')}`,
-        `Overwrite ${overwritten.length} existing file(s) in a batch write`,
-      );
-    }
-
     for (const item of prepared) {
       try {
         await mkdir(dirname(item.absolute), { recursive: true });
@@ -198,7 +169,7 @@ export class FileService {
     return { succeeded, failed };
   }
 
-  /** Moves a regular file or symbolic link into the desktop Trash after approval. */
+  /** Moves a regular file or symbolic link into the desktop Trash. */
   async delete(input: DeleteFileInput): Promise<void> {
     const path = await this.access.resolve(input.path, input.rootIndex);
     let metadata;
@@ -216,13 +187,6 @@ export class FileService {
         'Only files and symbolic links can be moved to Trash',
       );
     }
-
-    await this.access.requireApproval(
-      input.approvalRequestId,
-      input.clientId,
-      `filesystem.delete:${input.rootIndex ?? 0}:${input.path}`,
-      "Move a file to the user's Trash",
-    );
 
     await moveToTrash(path, metadata.isSymbolicLink());
   }

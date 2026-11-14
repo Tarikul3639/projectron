@@ -5,7 +5,7 @@ import { realpath } from 'node:fs/promises';
 import { AppConfigService } from '../../../config/config.service.js';
 import { BrowserSessionService } from './browser-session.service.js';
 
-/** Manages page evaluation, isolated context data, and approved local file uploads. */
+/** Manages page evaluation, isolated context data, and workspace file uploads. */
 @Injectable()
 export class BrowserContextService {
   /** Creates the service and initializes its dependencies. */
@@ -18,9 +18,7 @@ export class BrowserContextService {
   async evaluate(input: { pageId?: string; expression: string }) {
     if (input.expression.length > 20000)
       throw new BadRequestException('Browser expression is too large');
-    return this.sessions
-      .getPage(input.pageId)
-      .page.evaluate(input.expression);
+    return this.sessions.getPage(input.pageId).page.evaluate(input.expression);
   }
 
   /** Reads cookies while redacting their values. */

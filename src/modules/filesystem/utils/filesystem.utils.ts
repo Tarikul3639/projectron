@@ -29,7 +29,6 @@ import {
   sep,
 } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
-import { ApprovalService } from '../../approval/services/approval.service.js';
 
 /** Blocks direct access to .env files while allowing the documented .env.example template. */
 export function assertEnvironmentFileIsNotProtected(path: string): void {
@@ -41,21 +40,14 @@ export function assertEnvironmentFileIsNotProtected(path: string): void {
   }
 }
 
-/** Shared filesystem boundary: allowed roots, safe path resolution, and one-use approvals. */
+/** Shared filesystem boundary: allowed roots and safe path resolution. */
 export class FilesystemAccess {
   readonly allowedRoots: string[];
-  private readonly approvalRequired: boolean;
-  private readonly usedApprovalIds = new Set<string>();
-
-  constructor(
-    config: AppConfigService,
-    private readonly approvals: ApprovalService,
-  ) {
+  constructor(config: AppConfigService) {
     this.allowedRoots = config.filesystemAllowedRoots
       .split(delimiter)
       .map((root) => resolve(root.trim()))
       .filter(Boolean);
-    this.approvalRequired = config.approvalRequired;
   }
 
   /** Creates the configured workspace roots during module initialization. */
@@ -120,47 +112,6 @@ export class FilesystemAccess {
     }
 
     return target;
-  }
-
-  /** Requests approval or validates a matching, unused approval request. */
-  async requireApproval(
-    id: string | undefined,
-    clientId: string,
-    action: string,
-    reason: string,
-  ): Promise<void> {
-    if (!this.approvalRequired) return;
-
-    if (!id) {
-      const request = await this.approvals.createRequest({
-        clientId,
-        action,
-        reason,
-      });
-
-      throw new ConflictException({
-        message: 'User approval is required before this operation can continue',
-        approvalRequestId: request.id,
-      });
-    }
-
-    if (this.usedApprovalIds.has(id)) {
-      throw new ForbiddenException(
-        'This approval request has already been used',
-      );
-    }
-
-    const request = await this.approvals.getRequest(id);
-    if (
-      !request ||
-      request.status !== 'approved' ||
-      request.clientId !== clientId ||
-      request.action !== action
-    ) {
-      throw new ForbiddenException('A matching approved request is required');
-    }
-
-    this.usedApprovalIds.add(id);
   }
 }
 

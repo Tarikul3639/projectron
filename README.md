@@ -11,7 +11,7 @@
   Connect MCP-compatible AI clients to tools and workflows on your local computer.
 </p>
 
-Projectron is an open-source-style local **Model Context Protocol (MCP) server** built with **NestJS** and **TypeScript**. It gives compatible AI assistants a structured way to interact with your computer through tools for filesystem access, terminal commands, browser automation, document handling, process management, network information, and system inspection. Protected operations can require your approval before they run.
+Projectron is a local **Model Context Protocol (MCP) server** built with **NestJS** and **TypeScript**. It gives compatible AI assistants a structured way to interact with your computer through tools for filesystem access, terminal commands, browser automation, document handling, process management, network information, and system inspection. Tools execute directly after input validation and domain-specific restrictions pass; destructive-operation annotations remain impact metadata for MCP clients.
 
 ## Features
 
@@ -22,7 +22,7 @@ Projectron is an open-source-style local **Model Context Protocol (MCP) server**
 - **Document tools:** Work with local documents and conversions.
 - **Process management:** Inspect and manage processes started through Projectron.
 - **System and network tools:** Inspect system information and network details.
-- **Approval workflow:** Require explicit approval for protected operations.
+- **Orchestration:** Plan and execute multi-step workflows through registered MCP tools.
 - **Local storage:** Store application data in local JSON files without requiring a database.
 
 ## Requirements
@@ -89,7 +89,7 @@ pnpm test:e2e    # Run end-to-end tests
 
 ## Security
 
-Projectron can request explicit approval before protected tools perform sensitive operations. Configure filesystem access roots carefully and review approval prompts before allowing an operation. Approval prompts are an additional safeguard, not an operating-system-level sandbox.
+Configure filesystem roots carefully. Projectron retains domain-specific restrictions such as workspace boundaries, path traversal and symlink checks, protected environment-file handling, bounded command execution, blocked interactive shells and interpreters, and public-destination validation for outbound network requests. These controls are not an operating-system-level sandbox; run Projectron with an account whose OS permissions are appropriately limited.
 
 ## Technology
 

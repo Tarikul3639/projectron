@@ -41,6 +41,5 @@ export const httpRequestSchema = z
     body: z.string().max(65536).optional(),
     timeoutMs: z.number().int().min(100).max(30000).default(10000),
     maxResponseBytes: z.number().int().min(1024).max(1048576).default(262144),
-    clientId: z.string().trim().min(1).max(128),
   })
   .strict();

@@ -21,7 +21,6 @@ src/
 ├── app.module.ts           # Root module
 ├── config/                 # Environment validation and typed config
 └── modules/
-    ├── approval/           # Approval requests and MCP elicitation
     ├── browser/            # Browser sessions, pages, downloads
     ├── documents/          # Document files, conversion, templates
     ├── filesystem/         # Files, directories, edits, transfers
@@ -41,7 +40,6 @@ Each feature module owns its services, validation schemas, and MCP tool provider
 
 - **Config** validates environment variables and provides typed settings.
 - **Storage** provides file and JSON persistence.
-- **Approval** manages explicit approval for protected operations.
 - **MCP** discovers decorated providers and exposes them to MCP clients.
 - **Orchestration** coordinates registered MCP tools; it does not call domain services directly.
 
@@ -51,9 +49,8 @@ Each feature module owns its services, validation schemas, and MCP tool provider
 2. `@nestjs/mcp` discovers methods decorated with `@Tool()`.
 3. Zod input schemas validate tool arguments.
 4. The owning module performs the operation and applies its own safety checks.
-5. Protected actions request explicit approval through the Approval module.
-6. Persistent state is stored through Storage where required.
-7. The tool returns its result to the MCP client.
+5. Persistent state is stored through Storage where required.
+6. The tool returns its result to the MCP client.
 
 ## MCP transports
 
@@ -64,12 +61,12 @@ The HTTP transport file only defines the endpoint path; the Nest MCP module impl
 
 ## Persistence
 
-Application data is stored locally under `storage/`. The Storage module wraps filesystem operations and JSON serialization. Current task, approval, and project data are persisted by their owning services.
+Application data is stored locally under `storage/`. The Storage module wraps filesystem operations and JSON serialization. Current task and project data are persisted by their owning services.
 
 ## Safety boundaries
 
 - Filesystem access is restricted to configured allowed roots.
-- Protected operations require explicit user approval.
+- Destructive-operation annotations describe impact to compatible clients; they do not add an interactive server-side authorization stage.
 - Browser navigation blocks private and internal network destinations, subject to the browser module's URL checks.
-- Orchestration validates registered tool names, schemas, dependencies, and approval state before dispatch.
+- Orchestration validates registered tool names, schemas, dependencies, and execution state before dispatch.
 - AI-generated plans are treated as untrusted input and are validated before being saved.

@@ -25,7 +25,6 @@ describe('DocumentFileService', () => {
     await service.create({
       path: 'docs/README.md',
       content: '# Hello',
-      clientId: 'test-client',
       overwrite: false,
     });
     await expect(
@@ -72,7 +71,6 @@ describe('DocumentFileService', () => {
       service.create({
         path: 'notes.md',
         content: 'replacement',
-        clientId: 'test-client',
         overwrite: false,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);

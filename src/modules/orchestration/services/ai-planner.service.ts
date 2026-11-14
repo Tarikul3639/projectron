@@ -24,7 +24,6 @@ const generatedPlanSchema = z.object({
         toolName: z.string().trim().min(1).max(128),
         input: z.record(z.string(), z.json()).optional(),
         dependsOn: z.array(z.string().trim().min(1).max(64)).max(50).optional(),
-        requiresApproval: z.boolean().optional(),
       }),
     )
     .min(1)
@@ -57,11 +56,10 @@ export class AiPlannerService {
         content: [
           'You are Projectron Planner. Convert the user goal into a safe, ordered execution plan.',
           'Return only a JSON object with a "steps" array.',
-          'Each step must contain id, title, toolName, input, dependsOn, and requiresApproval.',
+          'Each step must contain id, title, toolName, input, and dependsOn.',
           'Use only exact tool names from the supplied catalog. Never invent tools.',
           'Use dependencies to express ordering. Keep the plan minimal and specific.',
           'Do not claim that actions have been executed.',
-          'Set requiresApproval=true for any step that changes files, runs commands, changes system state, sends data externally, or has uncertain impact.',
         ].join(' '),
       },
       {
@@ -93,26 +91,8 @@ export class AiPlannerService {
     }
     const input: CreateOrchestrationPlanInput = {
       goal: normalizedGoal,
-      steps: result.data.steps.map((step) => ({
-        ...step,
-        // Model output is untrusted: default to approval unless the tool is clearly read-only.
-        requiresApproval:
-          step.requiresApproval === true || !this.isReadOnlyTool(step.toolName),
-      })),
+      steps: result.data.steps,
     };
     return this.orchestration.createPlan(input);
-  }
-
-  /** Determines whether the named tool is classified as read-only. */
-  private isReadOnlyTool(toolName: string): boolean {
-    const action = toolName.split('_').slice(1).join('_');
-    return (
-      /^(list|get|read|search|inspect|discover|check|status|info|show)(_|$)/.test(
-        action,
-      ) &&
-      !/(write|create|delete|remove|update|move|copy|run|execute|send|install|archive|restore)/.test(
-        action,
-      )
-    );
   }
 }

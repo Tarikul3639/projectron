@@ -4,30 +4,27 @@ import { AiPlannerService } from './ai-planner.service.js';
 
 describe('AiPlannerService', () => {
   const provider = { completeJson: vi.fn() };
-  const orchestration = {
-    listAvailableTools: vi.fn(),
-    createPlan: vi.fn(),
-  };
+  const orchestration = { listAvailableTools: vi.fn(), createPlan: vi.fn() };
   let service: AiPlannerService;
 
   beforeEach(() => {
     vi.clearAllMocks();
     orchestration.listAvailableTools.mockReturnValue([
-      { name: 'filesystem_read_file', description: 'Read a file' },
+      { name: 'filesystem_read', description: 'Read a file' },
       { name: 'terminal_run', description: 'Run a command' },
     ]);
     orchestration.createPlan.mockImplementation(async (input) => input);
     service = new AiPlannerService(provider as any, orchestration as any);
   });
 
-  it('turns a natural-language goal into a persisted plan and gates mutations', async () => {
+  it('creates a plan without authorization metadata', async () => {
     provider.completeJson.mockResolvedValue(
       JSON.stringify({
         steps: [
           {
             id: 'inspect',
             title: 'Read project file',
-            toolName: 'filesystem_read_file',
+            toolName: 'filesystem_read',
             input: { path: 'README.md' },
           },
           {
@@ -40,10 +37,8 @@ describe('AiPlannerService', () => {
         ],
       }),
     );
-
     const result = await service.plan('Inspect and build the project');
-    expect(result.steps[0].requiresApproval).toBe(false);
-    expect(result.steps[1].requiresApproval).toBe(true);
+    expect(result.steps).toHaveLength(2);
     expect(orchestration.createPlan).toHaveBeenCalledOnce();
   });
 

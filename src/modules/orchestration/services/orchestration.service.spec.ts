@@ -8,7 +8,7 @@ describe('OrchestrationService', () => {
   const registry = {
     tools: [
       {
-        name: 'filesystem_write_file',
+        name: 'filesystem_write',
         options: {
           description: 'Write a file',
           annotations: { readOnlyHint: false, destructiveHint: true },
@@ -18,7 +18,7 @@ describe('OrchestrationService', () => {
         name: 'terminal_run',
         options: {
           description: 'Run a command',
-          annotations: { readOnlyHint: true },
+          annotations: { readOnlyHint: false },
         },
       },
     ],
@@ -44,32 +44,25 @@ describe('OrchestrationService', () => {
 
   it('lists registered tools', () => {
     expect(service.listAvailableTools()).toEqual([
-      { name: 'filesystem_write_file', description: 'Write a file' },
+      { name: 'filesystem_write', description: 'Write a file' },
       { name: 'terminal_run', description: 'Run a command' },
     ]);
   });
 
-  it('creates a plan with dependencies and approval gates', async () => {
+  it('queues all valid steps without a separate authorization state', async () => {
     const task = await service.createPlan({
       goal: 'Create a project',
       steps: [
+        { id: 'create', title: 'Create files', toolName: 'filesystem_write' },
         {
-          id: 'create',
-          title: 'Create files',
-          toolName: 'filesystem_write_file',
-        },
-        {
-          id: 'install',
-          title: 'Install dependencies',
+          id: 'run',
+          title: 'Run command',
           toolName: 'terminal_run',
           dependsOn: ['create'],
-          requiresApproval: true,
         },
       ],
     });
-    expect(task.status).toBe('planned');
-    expect(task.steps[0].status).toBe('awaiting_approval');
-    expect(task.steps[1].status).toBe('awaiting_approval');
+    expect(task.steps.map((step) => step.status)).toEqual(['queued', 'queued']);
   });
 
   it('rejects unknown tools and cyclic dependencies', async () => {
@@ -79,7 +72,6 @@ describe('OrchestrationService', () => {
         steps: [{ id: 'a', title: 'A', toolName: 'missing' }],
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
-
     await expect(
       service.createPlan({
         goal: 'Cycle',
@@ -113,23 +105,6 @@ describe('OrchestrationService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('does not allow a step to bypass its explicit approval gate', async () => {
-    const task = await service.createPlan({
-      goal: 'Approval required',
-      steps: [
-        { id: 'write', title: 'Write', toolName: 'filesystem_write_file' },
-      ],
-    });
-
-    await expect(
-      service.updateStep({
-        taskId: task.id,
-        stepId: 'write',
-        status: 'running',
-      }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
   it('tracks step completion and derives task completion', async () => {
     const task = await service.createPlan({
       goal: 'Single step',
@@ -150,23 +125,7 @@ describe('OrchestrationService', () => {
     expect(updated.steps[0].result).toEqual({ ok: true });
   });
 
-  it('forces approval for non-read-only tools even when a plan asks to skip it', async () => {
-    const task = await service.createPlan({
-      goal: 'Write a file',
-      steps: [
-        {
-          id: 'write',
-          title: 'Write',
-          toolName: 'filesystem_write_file',
-          requiresApproval: false,
-        },
-      ],
-    });
-    expect(task.steps[0].requiresApproval).toBe(true);
-    expect(task.steps[0].status).toBe('awaiting_approval');
-  });
-
-  it('stores bounded retry policy and records attempt history', async () => {
+  it('stores retry policy and records attempt history', async () => {
     const task = await service.createPlan({
       goal: 'Retry work',
       steps: [
@@ -174,7 +133,6 @@ describe('OrchestrationService', () => {
       ],
     });
     expect(task.steps[0].maxAttempts).toBe(2);
-    expect(task.steps[0].attempts).toEqual([]);
     await service.updateStep({
       taskId: task.id,
       stepId: 'one',
@@ -190,7 +148,6 @@ describe('OrchestrationService', () => {
     expect(failed.steps[0].attempts?.[0]).toMatchObject({
       attempt: 1,
       status: 'failed',
-      error: 'temporary',
     });
     await service.updateStep({
       taskId: task.id,

@@ -14,7 +14,6 @@ describe('NetworkHttpService', () => {
         headers: {},
         timeoutMs: 1000,
         maxResponseBytes: 1024,
-        clientId: 'test-client',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -27,7 +26,6 @@ describe('NetworkHttpService', () => {
         headers: {},
         timeoutMs: 1000,
         maxResponseBytes: 1024,
-        clientId: 'test-client',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });

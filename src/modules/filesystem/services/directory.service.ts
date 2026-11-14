@@ -6,7 +6,6 @@ import {
 import { lstat, mkdir, readdir, rename } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
-import { ApprovalService } from '../../approval/services/approval.service.js';
 import type {
   CreateDirectoryInput,
   DeleteFileInput,
@@ -23,14 +22,14 @@ import {
   moveToTrash,
 } from '../utils/filesystem.utils.js';
 
-/** Handles directory listing, trees, creation, rename, and approval-controlled deletion. */
+/** Handles directory listing, trees, creation, rename, and deletion. */
 @Injectable()
 export class DirectoryService {
   private readonly access: FilesystemAccess;
 
   /** Creates the service and initializes its dependencies. */
-  constructor(config: AppConfigService, approvals: ApprovalService) {
-    this.access = new FilesystemAccess(config, approvals);
+  constructor(config: AppConfigService) {
+    this.access = new FilesystemAccess(config);
   }
 
   /** Creates configured workspace roots before directory tools are used. */
@@ -77,7 +76,7 @@ export class DirectoryService {
     });
   }
 
-  /** Moves a directory and descendants to Trash after a matching approval. */
+  /** Moves a directory and descendants to Trash. */
   async deleteDirectory(input: DeleteFileInput): Promise<void> {
     const path = await this.access.resolve(input.path, input.rootIndex);
     const metadata = await lstat(path);
@@ -89,13 +88,6 @@ export class DirectoryService {
     if (path === this.access.allowedRoots[input.rootIndex ?? 0]) {
       throw new ForbiddenException('An allowed root cannot be moved to Trash');
     }
-
-    await this.access.requireApproval(
-      input.approvalRequestId,
-      input.clientId,
-      `filesystem.delete-directory:${input.rootIndex ?? 0}:${input.path}`,
-      'Move a directory and all its contents to the user Trash',
-    );
 
     await moveToTrash(path, false, true);
   }
@@ -166,19 +158,11 @@ export class DirectoryService {
     return walk(root, 1);
   }
 
-  /** Deletes a batch of mixed entries with one approval and per-path outcomes. */
+  /** Deletes a batch of mixed entries and reports per-path outcomes. */
   async deleteMultiple(input: DeleteMultipleInput): Promise<{
     succeeded: string[];
     failed: Array<{ path: string; error: string }>;
   }> {
-    const action = `filesystem.bulk-delete:${input.rootIndex ?? 0}:${input.paths.join('|')}`;
-    await this.access.requireApproval(
-      input.approvalRequestId,
-      input.clientId,
-      action,
-      `Move ${input.paths.length} filesystem entries to the user Trash`,
-    );
-
     const succeeded: string[] = [];
     const failed: Array<{ path: string; error: string }> = [];
 

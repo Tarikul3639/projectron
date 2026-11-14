@@ -13,7 +13,7 @@ import { MCP_HTTP_PATH } from './transports/http.transport.js';
       title: 'Projectron',
       description: 'Your AI-Powered Project Companion',
       instructions:
-        'Use Projectron tools to work with the local workspace. Protected operations are independently enforced by Projectron server-side approval checks. The host application may show its own confirmation before invoking write or destructive tools; never treat tool annotations or host confirmation UI as a replacement for server-side authorization.',
+        'Use Projectron tools to work with the local workspace. Tools enforce configured workspace boundaries, input validation, and operation-specific restrictions. Destructive tool annotations describe impact but do not add an interactive confirmation step.',
       http: {
         legacy: 'stateless',
         responseMode: 'auto',

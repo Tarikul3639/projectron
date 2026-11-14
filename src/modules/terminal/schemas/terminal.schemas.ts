@@ -33,18 +33,5 @@ export const executeCommandInputSchema = z
       .max(120_000)
       .default(30_000)
       .describe('Maximum execution time, from 100 ms to 120 seconds.'),
-    clientId: z
-      .string()
-      .trim()
-      .min(1)
-      .max(128)
-      .describe(
-        'Stable MCP client identifier used to bind execution approval.',
-      ),
-    approvalRequestId: z
-      .string()
-      .uuid()
-      .optional()
-      .describe('Approved request ID returned by the approval workflow.'),
   })
   .strict();

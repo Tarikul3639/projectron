@@ -13,20 +13,20 @@ Projectron exposes feature capabilities as MCP tools. Tool names and input schem
 | **Processes**     | Execute and supervise processes and manage their working directories.                                                                                         |
 | **Projects**      | List, inspect, add, update, remove, and discover project directories.                                                                                         |
 | **System**        | Read host information, CPU and memory metrics, disk I/O, temperatures, top processes, and performance diagnostics.                                            |
-| **Terminal**      | Run approved terminal commands and retrieve execution results.                                                                                                |
-| **Orchestration** | Discover tools, create plans, generate plans from goals, approve steps, execute one eligible step, inspect tasks, update steps, and cancel tasks.             |
+| **Terminal**      | Run supported terminal commands and retrieve execution results.                                                                                               |
+| **Orchestration** | Discover tools, create plans, generate plans from goals, execute one eligible step, inspect tasks, update steps, and cancel tasks.                            |
 
 ## Discover available tools
 
 The exact registered tool list is available at runtime through `orchestration_list_tools`. This reflects the tools actually discovered by the MCP registry and is the source of truth for a connected server.
 
-## Safety and approvals
+## Execution model
 
 - Every tool validates its input against its declared schema.
 - Read-only tools are identified with MCP annotations where appropriate.
-- Protected actions use the Approval module and require an explicit user decision.
+- Tool handlers execute directly when their input validation and domain-specific restrictions pass.
 - Filesystem and browser operations enforce their own access and destination restrictions.
-- A rejected or missing approval must not be treated as permission to execute.
+- MCP destructive-operation annotations describe impact to compatible clients; they do not add a server-side interactive confirmation step.
 
 ## Orchestration usage
 
@@ -35,8 +35,7 @@ A typical controlled workflow is:
 1. Call `orchestration_list_tools` to discover capabilities.
 2. Create a plan with `orchestration_create_plan` or `orchestration_plan_from_goal`.
 3. Inspect it with `orchestration_get_task`.
-4. Approve protected steps with `orchestration_approve_step`.
-5. Call `orchestration_execute_next` to execute at most one eligible step.
-6. Inspect the result and repeat until the task is complete.
+4. Call `orchestration_execute_next` to execute at most one eligible step.
+5. Inspect the result and repeat until the task is complete.
 
 Creating a plan does not execute tools. Each execution call advances at most one step.

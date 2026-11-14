@@ -14,7 +14,6 @@ Orchestration turns a goal into a validated, persisted task plan and executes it
 | `orchestration_list_tasks`     | List saved tasks.                                                              |
 | `orchestration_get_task`       | Inspect a task, its steps, dependencies, and results.                          |
 | `orchestration_update_step`    | Update a step when an external executor reports its outcome.                   |
-| `orchestration_approve_step`   | Request explicit approval for a protected step.                                |
 | `orchestration_execute_next`   | Execute or resume at most one dependency-ready step.                           |
 | `orchestration_cancel_task`    | Cancel a task when no tool step is actively running.                           |
 
@@ -22,9 +21,9 @@ Orchestration turns a goal into a validated, persisted task plan and executes it
 
 Task states: `planned`, `in_progress`, `completed`, `failed`, `cancelled`.
 
-Step states: `queued`, `awaiting_approval`, `running`, `completed`, `failed`, `skipped`.
+Step states: `queued`, `running`, `completed`, `failed`, `skipped`.
 
-A step cannot run until all declared dependencies are completed. Protected steps remain in `awaiting_approval` until explicitly approved.
+A step can run when all declared dependencies are completed.
 
 ## Execution flow
 
@@ -32,9 +31,8 @@ A step cannot run until all declared dependencies are completed. Protected steps
 2. Create a plan manually or generate one from a goal.
 3. Validate tool names, unique step IDs, dependency references, and dependency cycles.
 4. Persist the plan. Planning never runs a tool.
-5. Request approval for protected steps.
-6. Execute one eligible step per `orchestration_execute_next` call.
-7. Inspect the task and continue with the next eligible step.
+5. Execute one eligible step per `orchestration_execute_next` call.
+6. Inspect the task and continue with the next eligible step.
 
 The dispatcher invokes handlers through `McpRegistry`. It validates tool inputs against the registered Standard Schema and validates outputs when an output schema exists. Domain modules remain responsible for their own validation and safety checks.
 
@@ -49,7 +47,7 @@ AI planning uses an OpenAI-compatible Chat Completions provider.
 | `AI_MODEL`      | `gpt-4.1-mini`              |
 | `AI_TIMEOUT_MS` | `60000`                     |
 
-The planner sends the goal and registered tool names/descriptions to the provider. It validates the returned plan and tool names before persistence. AI output is untrusted: non-read-only steps require approval. The planner itself never executes a tool.
+The planner sends the goal and registered tool names/descriptions to the provider. It validates the returned plan and tool names before persistence. AI-generated plans are untrusted input and are schema-validated before they are saved. The planner itself never executes a tool.
 
 ## Retry, cancellation, and concurrency
 

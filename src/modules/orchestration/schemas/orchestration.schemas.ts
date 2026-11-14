@@ -18,7 +18,6 @@ export const createOrchestrationPlanSchema = z.object({
         toolName: z.string().trim().min(1).max(128),
         input: z.record(z.string(), z.json()).optional(),
         dependsOn: z.array(z.string().trim().min(1).max(64)).max(50).optional(),
-        requiresApproval: z.boolean().optional(),
         maxAttempts: z.number().int().min(1).max(5).optional(),
       }),
     )
@@ -31,26 +30,13 @@ export const orchestrationTaskIdSchema = z.object({
 export const orchestrationCancelSchema = z.object({
   taskId: z.string().uuid(),
 });
-export const orchestrationStepApprovalSchema = z.object({
-  taskId: z.string().uuid(),
-  stepId: z.string().trim().min(1).max(64),
-  clientId: z.string().trim().min(1).max(128),
-});
 export const orchestrationExecuteSchema = z.object({
   taskId: z.string().uuid(),
-  clientId: z.string().trim().min(1).max(128),
 });
 export const updateOrchestrationStepSchema = z.object({
   taskId: z.string().uuid(),
   stepId: z.string().trim().min(1).max(64),
-  status: z.enum([
-    'queued',
-    'awaiting_approval',
-    'running',
-    'completed',
-    'failed',
-    'skipped',
-  ]),
+  status: z.enum(['queued', 'running', 'completed', 'failed', 'skipped']),
   result: z.json().optional(),
   error: z.string().max(4_000).optional(),
 });

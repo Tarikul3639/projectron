@@ -68,12 +68,12 @@ export class FilesystemTools {
     return this.files.read(input);
   }
 
-  /** Creates or overwrites a file, requiring approval for overwrites. */
+  /** Creates or overwrites a regular file. */
   /** Handles write for the component. */
   @Tool({
     name: 'filesystem_write',
     description:
-      'Create a UTF-8 file; overwriting an existing file requires approval.',
+      'Create a UTF-8 file; an existing regular file is overwritten.',
     inputSchema: s.writeFileInputSchema,
     annotations: {
       readOnlyHint: false,
@@ -86,12 +86,12 @@ export class FilesystemTools {
     return { success: true, path: input.path };
   }
 
-  /** Writes a batch of files with one approval for existing destinations. */
+  /** Writes a batch of files with per-file results. */
   /** Writes multiple to the requested destination. */
   @Tool({
     name: 'filesystem_write_multiple',
     description:
-      'Write up to 100 files with per-file results and one approval for overwrites.',
+      'Write up to 100 files with per-file results; existing regular files are overwritten.',
     inputSchema: s.writeMultipleFilesInputSchema,
     annotations: {
       readOnlyHint: false,
@@ -103,12 +103,12 @@ export class FilesystemTools {
     return this.files.writeMultiple(input);
   }
 
-  /** Appends UTF-8 content, requiring approval when the file exists. */
+  /** Appends UTF-8 content to a file. */
   /** Handles append for the component. */
   @Tool({
     name: 'filesystem_append',
     description:
-      'Append UTF-8 text to a file; modifying an existing file requires approval.',
+      'Append UTF-8 text to a file, creating it when it does not exist.',
     inputSchema: s.appendFileInputSchema,
     annotations: {
       readOnlyHint: false,
@@ -126,7 +126,7 @@ export class FilesystemTools {
   @Tool({
     name: 'filesystem_edit',
     description:
-      'Replace one exact occurrence in a text file. Ambiguous matches are rejected; approval is required.',
+      'Replace one exact occurrence in a text file. Ambiguous matches are rejected.',
     inputSchema: s.editFileInputSchema,
     annotations: {
       readOnlyHint: false,
@@ -206,11 +206,11 @@ export class FilesystemTools {
     return { success: true, path: input.path };
   }
 
-  /** Moves a file to Trash after approval. */
+  /** Moves a file to Trash. */
   /** Handles delete for the component. */
   @Tool({
     name: 'filesystem_delete',
-    description: 'Move a file or symlink to the user Trash after approval.',
+    description: 'Move a file or symlink to the user Trash.',
     inputSchema: s.deleteFileInputSchema,
     annotations: {
       readOnlyHint: false,
@@ -223,11 +223,11 @@ export class FilesystemTools {
     return { success: true, path: input.path };
   }
 
-  /** Moves a directory to Trash after approval. */
+  /** Moves a directory to Trash. */
   /** Deletes directory after validating the request. */
   @Tool({
     name: 'filesystem_delete_directory',
-    description: 'Move a directory and its contents to Trash after approval.',
+    description: 'Move a directory and its contents to Trash.',
     inputSchema: s.deleteDirectoryInputSchema,
     annotations: {
       readOnlyHint: false,
@@ -351,12 +351,11 @@ export class FilesystemTools {
     return { success: true, from: input.path, to: input.destination };
   }
 
-  /** Deletes a mixed batch after one approval. */
+  /** Deletes a mixed batch and reports per-path outcomes. */
   /** Deletes multiple after validating the request. */
   @Tool({
     name: 'filesystem_delete_multiple',
-    description:
-      'Move multiple files, links, and directories to Trash after one approval.',
+    description: 'Move multiple files, links, and directories to Trash.',
     inputSchema: s.deleteMultipleInputSchema,
     annotations: {
       readOnlyHint: false,
@@ -469,7 +468,7 @@ export class FilesystemTools {
   @Tool({
     name: 'filesystem_finish_upload',
     description:
-      'Verify size and checksum, then publish the staged upload; overwrites require approval.',
+      'Verify size and checksum, then publish the staged upload; set overwrite=true to replace an existing file.',
     inputSchema: s.finishFileUploadInputSchema,
     annotations: {
       readOnlyHint: false,

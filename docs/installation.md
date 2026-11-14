@@ -20,7 +20,7 @@ Create a local environment file:
 cp .env.example .env
 ```
 
-Review the values in `.env`. In particular, set the host, port, filesystem allowed roots, and approval policy for your environment.
+Review the values in `.env`. In particular, set the host, port, and filesystem allowed roots for your environment.
 
 For AI-generated plans, configure `AI_API_KEY`. The provider URL and model can be changed with `AI_BASE_URL` and `AI_MODEL`.
 

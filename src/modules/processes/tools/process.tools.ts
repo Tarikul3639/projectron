@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Tool, type McpContext } from '@nestjs/mcp';
+import { Tool } from '@nestjs/mcp';
 import * as z from 'zod';
-import { McpApprovalService } from '../../approval/services/mcp-approval.service.js';
 import {
   processIdSchema,
   startProcessSchema,
@@ -11,21 +10,20 @@ import { ProcessExecutionService } from '../services/process-execution.service.j
 import { ProcessRegistryService } from '../services/process-registry.service.js';
 import type { StartProcessInput } from '../types/processes.type.js';
 
-/** Publishes process supervision tools and shares the centralized approval flow. */
+/** Publishes process supervision tools. */
 @Injectable()
 export class ProcessTools {
-  /** Initializes the tool handlers and their dependencies. */
+  /** Initializes process execution and registry dependencies. */
   constructor(
     private readonly execution: ProcessExecutionService,
     private readonly registry: ProcessRegistryService,
-    private readonly approvalHandler: McpApprovalService,
   ) {}
 
-  /** Handles start for the component. */
+  /** Starts a non-interactive executable in an allowed workspace. */
   @Tool({
     name: 'process_start',
     description:
-      'Request user approval, then start a non-interactive executable in an allowed workspace. Returns its managed PID.',
+      'Start a non-interactive executable in an allowed workspace. Returns its managed PID.',
     inputSchema: startProcessSchema,
     annotations: {
       readOnlyHint: false,
@@ -33,17 +31,11 @@ export class ProcessTools {
       idempotentHint: false,
     },
   })
-  start(input: StartProcessInput, context: McpContext) {
-    return this.approvalHandler.run(
-      'process',
-      'Start process: ' + input.command + ' ' + input.args.join(' '),
-      input,
-      context,
-      () => this.execution.start(input),
-    );
+  start(input: StartProcessInput) {
+    return this.execution.start(input);
   }
 
-  /** Lists active browser sessions and their open pages. */
+  /** Lists processes started and managed by this Projectron instance. */
   @Tool({
     name: 'process_list',
     description:
@@ -59,7 +51,7 @@ export class ProcessTools {
     return this.registry.list();
   }
 
-  /** Handles status for the component. */
+  /** Gets status and metadata for a managed process. */
   @Tool({
     name: 'process_status',
     description: 'Get status and metadata for a process started by Projectron.',
@@ -74,7 +66,7 @@ export class ProcessTools {
     return this.registry.get(input.pid);
   }
 
-  /** Handles logs for the component. */
+  /** Reads captured stdout and stderr for a managed process. */
   @Tool({
     name: 'process_logs',
     description:
@@ -90,11 +82,11 @@ export class ProcessTools {
     return this.registry.getLogs(input.pid);
   }
 
-  /** Handles stop for the component. */
+  /** Sends SIGTERM to a Projectron-managed process. */
   @Tool({
     name: 'process_stop',
     description:
-      'Request user approval, then send SIGTERM to a process started by Projectron. Cannot stop unrelated processes or Projectron itself.',
+      'Send SIGTERM to a process started by Projectron. Cannot stop unrelated processes or Projectron itself.',
     inputSchema: stopProcessSchema,
     annotations: {
       readOnlyHint: false,
@@ -102,13 +94,7 @@ export class ProcessTools {
       idempotentHint: false,
     },
   })
-  stop(input: { pid: number; clientId: string }, context: McpContext) {
-    return this.approvalHandler.run(
-      'process',
-      'Stop Projectron-managed process PID ' + input.pid,
-      input,
-      context,
-      () => this.execution.stop(input.pid),
-    );
+  stop(input: { pid: number }) {
+    return this.execution.stop(input.pid);
   }
 }

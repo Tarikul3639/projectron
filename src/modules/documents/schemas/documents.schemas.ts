@@ -9,7 +9,6 @@ const relativePath = z
     (value) => !value.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(value),
     'Document paths must be relative to an allowed workspace root',
   );
-const clientId = z.string().trim().min(1).max(128);
 const rootIndex = z.number().int().min(0).max(31).optional();
 
 // Defines the bounded inputs accepted by document tools.
@@ -27,7 +26,6 @@ export const documentCreateSchema = z
     path: relativePath,
     content: z.string().max(1_000_000),
     overwrite: z.boolean().optional().default(false),
-    clientId,
     rootIndex,
   })
   .strict();
@@ -36,7 +34,6 @@ export const documentConvertSchema = z
     sourcePath: relativePath,
     destinationPath: relativePath,
     overwrite: z.boolean().optional().default(false),
-    clientId,
     rootIndex,
   })
   .strict();
@@ -53,7 +50,6 @@ export const documentTemplateSchema = z
     path: relativePath,
     projectName: z.string().trim().min(1).max(200).optional(),
     overwrite: z.boolean().optional().default(false),
-    clientId,
     rootIndex,
   })
   .strict();

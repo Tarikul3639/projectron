@@ -5,7 +5,6 @@ import {
   browserScreenshotSchema,
   browserUploadSchema,
 } from '../schemas/browser.schemas.js';
-import { McpApprovalService } from '../../approval/services/mcp-approval.service.js';
 import { BrowserContextService } from '../services/browser-context.service.js';
 import { BrowserInfoService } from '../services/browser-info.service.js';
 import { BrowserSessionService } from '../services/browser-session.service.js';
@@ -39,15 +38,8 @@ describe('BrowserTools', () => {
       browserUploadSchema.safeParse({
         selector: 'input[type=file]',
         filePaths: ['/workspace/a.txt'],
-        clientId: 'test-client',
       }).success,
     ).toBe(true);
-    expect(
-      browserUploadSchema.safeParse({
-        selector: 'input[type=file]',
-        filePaths: ['/workspace/a.txt'],
-      }).success,
-    ).toBe(false);
   });
 
   it('delegates capability discovery to the browser information service', () => {
@@ -61,7 +53,6 @@ describe('BrowserTools', () => {
       {} as unknown as BrowserPageService,
       {} as unknown as BrowserArtifactService,
       {} as unknown as BrowserDownloadService,
-      {} as unknown as McpApprovalService,
     );
 
     expect(tools.capabilities()).toEqual({ features: ['navigation'] });

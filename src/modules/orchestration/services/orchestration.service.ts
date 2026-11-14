@@ -73,20 +73,15 @@ export class OrchestrationService {
       createdAt: now,
       updatedAt: now,
       steps: input.steps.map((step): OrchestrationStep => {
-        const registeredTool = availableTools.get(step.toolName)!;
-        const requiresApproval =
-          step.requiresApproval === true ||
-          registeredTool.options.annotations?.readOnlyHint !== true;
         return {
           id: step.id,
           title: step.title,
           toolName: step.toolName,
           input: step.input ?? {},
           dependsOn: step.dependsOn ?? [],
-          requiresApproval,
           maxAttempts: Math.min(5, Math.max(1, step.maxAttempts ?? 3)),
           attempts: [],
-          status: requiresApproval ? 'awaiting_approval' : 'queued',
+          status: 'queued',
           createdAt: now,
           updatedAt: now,
         };
@@ -115,32 +110,6 @@ export class OrchestrationService {
     return task;
   }
 
-  /** Marks a step approved only after the Approval module confirms the decision. */
-  async approveStep(
-    taskId: string,
-    stepId: string,
-  ): Promise<OrchestrationTask> {
-    const tasks = await this.readTasks();
-    const task = tasks.find((item) => item.id === taskId);
-    if (!task)
-      throw new NotFoundException(`Orchestration task not found: ${taskId}`);
-    if (['completed', 'failed', 'cancelled'].includes(task.status)) {
-      throw new BadRequestException('The task is already in a terminal state');
-    }
-    const step = task.steps.find((item) => item.id === stepId);
-    if (!step) throw new NotFoundException(`Step not found: ${stepId}`);
-    if (!step.requiresApproval || step.status !== 'awaiting_approval') {
-      throw new BadRequestException('Step is not awaiting approval');
-    }
-    step.requiresApproval = false;
-    step.approvedAt = new Date().toISOString();
-    step.status = 'queued';
-    step.updatedAt = new Date().toISOString();
-    task.updatedAt = step.updatedAt;
-    await this.storage.write(STORAGE_PATH, tasks);
-    return task;
-  }
-
   /** Cancels a task when no tool step is actively running. */
   async cancelTask(taskId: string): Promise<OrchestrationTask> {
     const tasks = await this.readTasks();
@@ -157,7 +126,7 @@ export class OrchestrationService {
     }
     const now = new Date().toISOString();
     for (const step of task.steps) {
-      if (['queued', 'awaiting_approval', 'failed'].includes(step.status)) {
+      if (['queued', 'failed'].includes(step.status)) {
         step.status = 'skipped';
         step.completedAt = now;
         step.updatedAt = now;
@@ -202,9 +171,6 @@ export class OrchestrationService {
         throw new BadRequestException(
           `Dependencies are not complete: ${incomplete.join(', ')}`,
         );
-      }
-      if (step.requiresApproval) {
-        throw new BadRequestException('This step requires explicit approval');
       }
       const startedAt = new Date().toISOString();
       step.startedAt ??= startedAt;
@@ -257,8 +223,7 @@ export class OrchestrationService {
     next: OrchestrationStep['status'],
   ): void {
     const allowed: Record<OrchestrationStep['status'], string[]> = {
-      queued: ['running', 'awaiting_approval', 'skipped'],
-      awaiting_approval: ['skipped'],
+      queued: ['running', 'skipped'],
       running: ['completed', 'failed'],
       completed: [],
       failed: ['queued'],

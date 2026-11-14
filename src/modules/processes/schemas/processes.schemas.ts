@@ -6,7 +6,6 @@ export const startProcessSchema = z
     command: z.string().trim().min(1).max(256),
     args: z.array(z.string().max(8192)).max(100).default([]),
     workingDirectory: z.string().trim().min(1),
-    clientId: z.string().trim().min(1).max(128),
   })
   .strict();
 
@@ -16,8 +15,4 @@ export const processIdSchema = z
   })
   .strict();
 
-export const stopProcessSchema = processIdSchema
-  .extend({
-    clientId: z.string().trim().min(1).max(128),
-  })
-  .strict();
+export const stopProcessSchema = processIdSchema.extend({}).strict();

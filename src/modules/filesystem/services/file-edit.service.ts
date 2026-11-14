@@ -7,7 +7,6 @@ import {
 import { lstat, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
-import { ApprovalService } from '../../approval/services/approval.service.js';
 import { FilesystemAccess } from '../utils/filesystem.utils.js';
 
 /** Handles exact text edits, line-range reads, and bounded workspace searches. */
@@ -16,8 +15,8 @@ export class FileEditService {
   private readonly access: FilesystemAccess;
 
   /** Creates the service and initializes its dependencies. */
-  constructor(config: AppConfigService, approvals: ApprovalService) {
-    this.access = new FilesystemAccess(config, approvals);
+  constructor(config: AppConfigService) {
+    this.access = new FilesystemAccess(config);
   }
 
   /** Ensures configured roots exist before search/edit operations begin. */
@@ -30,8 +29,6 @@ export class FileEditService {
     path: string;
     oldText: string;
     newText: string;
-    clientId: string;
-    approvalRequestId?: string;
     rootIndex?: number;
   }): Promise<{ path: string; replacements: 1 }> {
     if (!input.oldText) {
@@ -57,13 +54,6 @@ export class FileEditService {
         'The exact text occurs more than once; provide a more specific match',
       );
     }
-
-    await this.access.requireApproval(
-      input.approvalRequestId,
-      input.clientId,
-      `filesystem.edit:${input.rootIndex ?? 0}:${input.path}`,
-      'Edit content in an existing file',
-    );
 
     const updated =
       original.slice(0, first) +

@@ -11,7 +11,6 @@ Create `.env` from `.env.example` and set only the values needed for your enviro
 | `PORT`                     | `3639`                      | HTTP server port; valid range is 1–65535.                                                                 |
 | `MCP_HTTP_ENABLED`         | `true`                      | Declared MCP HTTP setting. The current HTTP bootstrap does not yet use this flag to disable the endpoint. |
 | `MCP_STDIO_ENABLED`        | `true`                      | Declared MCP STDIO setting. The current stdio entry point is controlled by the separate launch command.   |
-| `APPROVAL_REQUIRED`        | `true`                      | Global approval policy setting. Individual protected tools also enforce their approval flow.              |
 | `AI_BASE_URL`              | `https://api.openai.com/v1` | OpenAI-compatible API base URL for AI planning.                                                           |
 | `AI_API_KEY`               | unset                       | Provider credential. AI planning is unavailable without it.                                               |
 | `AI_MODEL`                 | `gpt-4.1-mini`              | Model identifier sent to the provider.                                                                    |
@@ -27,7 +26,6 @@ HOST=127.0.0.1
 PORT=3639
 MCP_HTTP_ENABLED=true
 MCP_STDIO_ENABLED=false
-APPROVAL_REQUIRED=true
 FILESYSTEM_ALLOWED_ROOTS=./workspace
 LOG_LEVEL=debug
 ```

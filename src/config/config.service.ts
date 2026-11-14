@@ -39,11 +39,6 @@ export class AppConfigService {
     return this.getValue('MCP_STDIO_ENABLED') === 'true';
   }
 
-  /** Whether approval is required before protected operations are executed. */
-  get approvalRequired(): boolean {
-    return this.getValue('APPROVAL_REQUIRED') === 'true';
-  }
-
   /** OpenAI-compatible API base URL used by the orchestration provider. */
   get aiBaseUrl(): string {
     return this.getValue('AI_BASE_URL');

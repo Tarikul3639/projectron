@@ -23,7 +23,6 @@ import {
 } from 'node:fs/promises';
 import { dirname, sep } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
-import { ApprovalService } from '../../approval/services/approval.service.js';
 import type {
   BeginFileUploadInput,
   BulkPathPairsInput,
@@ -47,7 +46,6 @@ type UploadSession = {
   nextChunkIndex: number;
   sha256?: string;
   overwrite: boolean;
-  clientId: string;
   rootIndex: number;
 };
 
@@ -58,8 +56,8 @@ export class FileTransferService {
   private readonly uploads = new Map<string, UploadSession>();
 
   /** Creates the service and initializes its dependencies. */
-  constructor(config: AppConfigService, approvals: ApprovalService) {
-    this.access = new FilesystemAccess(config, approvals);
+  constructor(config: AppConfigService) {
+    this.access = new FilesystemAccess(config);
   }
 
   /** Creates configured roots before transfer tools are used. */
@@ -262,7 +260,7 @@ export class FileTransferService {
 
     if ((await pathExists(targetPath)) && !input.overwrite) {
       throw new ConflictException(
-        'Destination already exists; set overwrite=true to request approval at completion',
+        'Destination already exists; set overwrite=true to replace it at completion',
       );
     }
 
@@ -287,7 +285,6 @@ export class FileTransferService {
       nextChunkIndex: 0,
       sha256: input.sha256?.toLowerCase(),
       overwrite: input.overwrite ?? false,
-      clientId: input.clientId,
       rootIndex,
     });
 
@@ -369,13 +366,6 @@ export class FileTransferService {
       if (!upload.overwrite) {
         throw new ConflictException('Destination already exists');
       }
-
-      await this.access.requireApproval(
-        input.approvalRequestId,
-        upload.clientId,
-        `filesystem.write:${upload.rootIndex}:${upload.relativePath}`,
-        'Overwrite an existing file with a completed chunked upload',
-      );
     }
 
     await mkdir(dirname(upload.targetPath), { recursive: true });

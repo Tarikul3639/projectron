@@ -1,17 +1,14 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { mkdir, realpath } from 'node:fs/promises';
 import { delimiter, isAbsolute, relative, resolve, sep } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
-import { ApprovalService } from '../../approval/services/approval.service.js';
 import type { ExecuteCommandInput } from '../types/terminal.type.js';
 import type { CommandExecutionResult } from '../interfaces/terminal.interface.js';
 
@@ -49,25 +46,18 @@ const BLOCKED_EXECUTABLES = new Set([
   'osascript',
 ]);
 
-/** Executes approved local programs without invoking a command shell. */
+/** Executes local programs without invoking a command shell. */
 @Injectable()
 export class TerminalService {
   private readonly logger = new Logger(TerminalService.name);
   private readonly allowedRoots: string[];
-  private readonly approvalRequired: boolean;
-  private readonly usedApprovalIds = new Set<string>();
-
   /** Creates the service and initializes its dependencies. */
-  constructor(
-    config: AppConfigService,
-    private readonly approvals: ApprovalService,
-  ) {
+  constructor(config: AppConfigService) {
     // Resolve configured roots once so every command uses the same workspace boundary.
     this.allowedRoots = config.filesystemAllowedRoots
       .split(delimiter)
       .map((root) => resolve(root.trim()))
       .filter(Boolean);
-    this.approvalRequired = config.approvalRequired;
   }
 
   /** Creates configured workspace roots before terminal tools are available. */
@@ -77,7 +67,7 @@ export class TerminalService {
     );
   }
 
-  /** Runs one executable with bounded output, timeout, workspace cwd, and approval. */
+  /** Runs one executable with bounded output, timeout, and workspace cwd. */
   async execute(input: ExecuteCommandInput): Promise<CommandExecutionResult> {
     const executable = input.command.trim();
     const executableName = executable.split(/[\\/]/).pop()?.toLowerCase() ?? '';
@@ -117,54 +107,6 @@ export class TerminalService {
     const workingDirectory = await this.resolveWorkingDirectory(
       input.workingDirectory,
     );
-    // Hash the complete command so the approval action remains within the security DTO limit.
-    const commandFingerprint = createHash('sha256')
-      .update(
-        JSON.stringify({
-          executable,
-          args: input.args,
-          workingDirectory,
-          timeoutMs: input.timeoutMs,
-        }),
-      )
-      .digest('hex');
-    const action = `terminal.execute:${commandFingerprint}`;
-
-    // Command execution can change files or start arbitrary programs, so it always requires approval when enabled.
-    if (this.approvalRequired) {
-      if (!input.approvalRequestId) {
-        const request = await this.approvals.createRequest({
-          clientId: input.clientId,
-          action,
-          reason: `Execute local program: ${executable} (timeout ${input.timeoutMs} ms)`,
-        });
-        throw new ConflictException({
-          message:
-            'User approval is required before executing a terminal command',
-          approvalRequestId: request.id,
-        });
-      }
-
-      if (this.usedApprovalIds.has(input.approvalRequestId)) {
-        throw new ForbiddenException(
-          'This approval request has already been used',
-        );
-      }
-
-      const request = await this.approvals.getRequest(input.approvalRequestId);
-      if (
-        !request ||
-        request.status !== 'approved' ||
-        request.clientId !== input.clientId ||
-        request.action !== action
-      ) {
-        throw new ForbiddenException(
-          'A matching approved terminal command is required',
-        );
-      }
-      this.usedApprovalIds.add(input.approvalRequestId);
-    }
-
     this.logger.log(
       `Executing command: ${executable} (cwd: ${workingDirectory})`,
     );

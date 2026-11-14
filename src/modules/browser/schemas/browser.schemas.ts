@@ -2,8 +2,6 @@ import * as z from 'zod';
 
 const pageId = z.string().uuid().optional();
 const sessionId = z.string().uuid().optional();
-const clientId = z.string().trim().min(1).max(128);
-const approvalRequestId = z.string().uuid().optional();
 const selector = z.string().trim().min(1).max(2000);
 const url = z
   .string()
@@ -93,8 +91,6 @@ export const browserUploadSchema = z
     pageId,
     selector,
     filePaths: z.array(z.string().trim().min(1).max(4096)).min(1).max(20),
-    clientId,
-    approvalRequestId,
   })
   .strict();
 export const browserDownloadSchema = z
@@ -102,8 +98,6 @@ export const browserDownloadSchema = z
     pageId,
     selector,
     saveTo: z.string().trim().min(1).max(4096).optional(),
-    clientId,
-    approvalRequestId,
   })
   .strict();
 export const browserDownloadIdSchema = z
@@ -113,16 +107,12 @@ export const browserEvalSchema = z
   .object({
     pageId,
     expression: z.string().min(1).max(20000),
-    clientId,
-    approvalRequestId,
   })
   .strict();
 export const browserPdfSchema = z
   .object({
     pageId,
     path: z.string().trim().min(1).max(4096),
-    clientId,
-    approvalRequestId,
   })
   .strict();
 export const browserStorageReadSchema = z
@@ -134,8 +124,6 @@ export const browserStorageWriteSchema = z
     storage: z.enum(['local', 'session']),
     key: z.string().min(1).max(2000),
     value: z.string().max(100000),
-    clientId,
-    approvalRequestId,
   })
   .strict();
 export const browserCookieReadSchema = z.object({ pageId }).strict();
@@ -160,8 +148,6 @@ export const browserCookieSetSchema = z
       )
       .min(1)
       .max(100),
-    clientId,
-    approvalRequestId,
   })
   .strict();
 export const browserViewportSchema = z

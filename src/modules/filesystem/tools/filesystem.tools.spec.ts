@@ -14,7 +14,6 @@ describe('FilesystemTools', () => {
         path: 'a.txt',
         oldText: 'x',
         newText: 'y',
-        clientId: 'client',
       }).success,
     ).toBe(true);
     expect(
@@ -31,7 +30,6 @@ describe('FilesystemTools', () => {
       schemas.appendFileInputSchema.safeParse({
         path: 'a.txt',
         content: 'x',
-        clientId: 'client',
       }).success,
     ).toBe(true);
   });
@@ -58,7 +56,6 @@ describe('FilesystemTools', () => {
       path: 'a.txt',
       oldText: 'x',
       newText: 'y',
-      clientId: 'client',
     });
     await tools.copyFile({ path: 'a.txt', destination: 'b.txt' });
 

@@ -26,7 +26,6 @@ export class DocumentConverterService {
       path: input.destinationPath,
       content,
       overwrite: input.overwrite,
-      clientId: input.clientId,
       rootIndex: input.rootIndex,
     });
   }

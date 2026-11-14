@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Tool, type McpContext } from '@nestjs/mcp';
+import { Tool } from '@nestjs/mcp';
 import * as z from 'zod';
-import { McpApprovalService } from '../../approval/services/mcp-approval.service.js';
 import {
   connectivitySchema,
   dnsLookupSchema,
@@ -13,18 +12,17 @@ import { NetworkDnsService } from '../services/network-dns.service.js';
 import { NetworkConnectivityService } from '../services/network-connectivity.service.js';
 import { NetworkHttpService } from '../services/network-http.service.js';
 
-/** Publishes network diagnostics and approval-gated outbound HTTP tools. */
+/** Publishes network diagnostics and bounded outbound HTTP tools. */
 @Injectable()
 export class NetworkTools {
-  /** Initializes the tool handlers and their dependencies. */
+  /** Initializes the network tool handlers. */
   constructor(
     private readonly dnsService: NetworkDnsService,
     private readonly connectivityService: NetworkConnectivityService,
     private readonly httpService: NetworkHttpService,
-    private readonly approvalHandler: McpApprovalService,
   ) {}
 
-  /** Handles dns for the component. */
+  /** Resolves DNS records for a hostname. */
   @Tool({
     name: 'network_dns_lookup',
     description: 'Resolve A, AAAA, MX, NS, and TXT DNS records for a hostname.',
@@ -39,7 +37,7 @@ export class NetworkTools {
     return this.dnsService.dnsLookup(input);
   }
 
-  /** Handles connectivity for the component. */
+  /** Checks whether a public hostname accepts a TCP connection. */
   @Tool({
     name: 'network_connectivity_check',
     description:
@@ -55,7 +53,7 @@ export class NetworkTools {
     return this.connectivityService.checkConnectivity(input);
   }
 
-  /** Handles port for the component. */
+  /** Checks one TCP port on a public host. */
   @Tool({
     name: 'network_port_check',
     description:
@@ -71,11 +69,11 @@ export class NetworkTools {
     return this.connectivityService.checkPort(input);
   }
 
-  /** Handles http for the component. */
+  /** Sends a bounded HTTP request to a public URL. */
   @Tool({
     name: 'network_http_request',
     description:
-      'Send a bounded HTTP request to a public URL. Requires explicit user approval; local and private network destinations are blocked.',
+      'Send a bounded HTTP request to a public URL. Local and private network destinations are blocked.',
     inputSchema: httpRequestSchema,
     annotations: {
       readOnlyHint: false,
@@ -83,13 +81,7 @@ export class NetworkTools {
       idempotentHint: false,
     },
   })
-  http(input: HttpRequestInput, context: McpContext) {
-    return this.approvalHandler.run(
-      'network',
-      `Send ${input.method} request to ${input.url} (timeout ${input.timeoutMs} ms)`,
-      input,
-      context,
-      () => this.httpService.request(input),
-    );
+  http(input: HttpRequestInput) {
+    return this.httpService.request(input);
   }
 }

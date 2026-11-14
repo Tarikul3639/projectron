@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Tool, type McpContext } from '@nestjs/mcp';
+import { Tool } from '@nestjs/mcp';
 import * as z from 'zod';
-import { McpApprovalService } from '../../approval/services/mcp-approval.service.js';
 import { BrowserContextService } from '../services/browser-context.service.js';
 import { BrowserInfoService } from '../services/browser-info.service.js';
 import { BrowserSessionService } from '../services/browser-session.service.js';
@@ -9,7 +8,7 @@ import { BrowserPageService } from '../services/browser-page.service.js';
 import { BrowserArtifactService } from '../services/browser-artifact.service.js';
 import { BrowserDownloadService } from '../services/browser-download.service.js';
 
-/** Publishes browser automation tools and collects explicit user approval for sensitive actions. */
+/** Publishes browser automation tools for isolated browser sessions. */
 @Injectable()
 export class BrowserTools {
   /** Initializes the tool handlers and their dependencies. */
@@ -20,7 +19,6 @@ export class BrowserTools {
     private readonly pages: BrowserPageService,
     private readonly artifacts: BrowserArtifactService,
     private readonly downloads: BrowserDownloadService,
-    private readonly approvalHandler: McpApprovalService,
   ) {}
 
   /** Returns the browser automation capabilities and safety restrictions. */
@@ -534,13 +532,12 @@ export class BrowserTools {
   @Tool({
     name: 'browser_upload_file',
     description:
-      'Upload local files to a webpage input. Requires explicit user approval; source files must be inside configured workspace roots.',
+      'Upload local files to a webpage input; source files must be inside configured workspace roots.',
     inputSchema: z
       .object({
         pageId: z.string().uuid().optional(),
         selector: z.string().min(1),
         filePaths: z.array(z.string().min(1)).min(1).max(20),
-        clientId: z.string().min(1).max(128),
       })
       .strict(),
     annotations: {
@@ -549,34 +546,19 @@ export class BrowserTools {
       idempotentHint: false,
     },
   })
-  upload(
-    input: {
-      pageId?: string;
-      selector: string;
-      filePaths: string[];
-      clientId: string;
-    },
-    context: McpContext,
-  ) {
-    return this.approvalHandler.run(
-      'browser',
-      'Upload local files to a webpage',
-      input,
-      context,
-      () => this.contextData.upload(input),
-    );
+  upload(input: { pageId?: string; selector: string; filePaths: string[] }) {
+    return this.contextData.upload(input);
   }
 
   /** Handles download for the component. */
   @Tool({
     name: 'browser_download',
     description:
-      'Click a download link or button and capture its download record. Requires explicit user approval.',
+      'Click a download link or button and capture its download record.',
     inputSchema: z
       .object({
         pageId: z.string().uuid().optional(),
         selector: z.string().min(1),
-        clientId: z.string().min(1).max(128),
       })
       .strict(),
     annotations: {
@@ -585,17 +567,8 @@ export class BrowserTools {
       idempotentHint: false,
     },
   })
-  download(
-    input: { pageId?: string; selector: string; clientId: string },
-    context: McpContext,
-  ) {
-    return this.approvalHandler.run(
-      'browser',
-      'Download a file from a webpage',
-      input,
-      context,
-      () => this.downloads.trigger(input),
-    );
+  download(input: { pageId?: string; selector: string }) {
+    return this.downloads.trigger(input);
   }
 
   /** Returns downloads from the service. */
@@ -634,12 +607,11 @@ export class BrowserTools {
   @Tool({
     name: 'browser_save_download',
     description:
-      'Save a captured download to an absolute path inside an allowed workspace. Requires explicit user approval.',
+      'Save a captured download to an absolute path inside an allowed workspace.',
     inputSchema: z
       .object({
         downloadId: z.string().uuid(),
         path: z.string().min(1),
-        clientId: z.string().min(1).max(128),
       })
       .strict(),
     annotations: {
@@ -648,17 +620,8 @@ export class BrowserTools {
       idempotentHint: false,
     },
   })
-  saveDownload(
-    input: { downloadId: string; path: string; clientId: string },
-    context: McpContext,
-  ) {
-    return this.approvalHandler.run(
-      'browser',
-      'Save browser download to ' + input.path,
-      input,
-      context,
-      () => this.downloads.save(input.downloadId, input.path),
-    );
+  saveDownload(input: { downloadId: string; path: string }) {
+    return this.downloads.save(input.downloadId, input.path);
   }
 
   /** Handles cancel download for the component. */
@@ -679,13 +642,11 @@ export class BrowserTools {
   /** Handles pdf for the component. */
   @Tool({
     name: 'browser_print_to_pdf',
-    description:
-      'Print the current page to PDF inside an allowed workspace. Requires explicit user approval.',
+    description: 'Print the current page to PDF inside an allowed workspace.',
     inputSchema: z
       .object({
         pageId: z.string().uuid().optional(),
         path: z.string().min(1),
-        clientId: z.string().min(1).max(128),
       })
       .strict(),
     annotations: {
@@ -694,17 +655,8 @@ export class BrowserTools {
       idempotentHint: false,
     },
   })
-  pdf(
-    input: { pageId?: string; path: string; clientId: string },
-    context: McpContext,
-  ) {
-    return this.approvalHandler.run(
-      'browser',
-      'Print webpage to PDF at ' + input.path,
-      input,
-      context,
-      () => this.artifacts.pdf(input.pageId, input.path),
-    );
+  pdf(input: { pageId?: string; path: string }) {
+    return this.artifacts.pdf(input.pageId, input.path);
   }
 
   /** Handles trace start for the component. */
@@ -740,16 +692,15 @@ export class BrowserTools {
     return this.artifacts.traceStop(input.pageId, input.path);
   }
 
-  /** Evaluates JavaScript in the selected page after explicit approval. */
+  /** Evaluates JavaScript in the selected page context. */
   @Tool({
     name: 'browser_evaluate',
     description:
-      'Execute JavaScript in the selected page context. This is powerful and requires explicit user approval; do not use it when a safe locator tool is sufficient.',
+      'Execute JavaScript in the selected page context; prefer a safe locator tool when it is sufficient.',
     inputSchema: z
       .object({
         pageId: z.string().uuid().optional(),
         expression: z.string().min(1).max(20000),
-        clientId: z.string().min(1).max(128),
       })
       .strict(),
     annotations: {
@@ -758,17 +709,8 @@ export class BrowserTools {
       idempotentHint: false,
     },
   })
-  evaluate(
-    input: { pageId?: string; expression: string; clientId: string },
-    context: McpContext,
-  ) {
-    return this.approvalHandler.run(
-      'browser',
-      'Execute JavaScript in browser page',
-      input,
-      context,
-      () => this.contextData.evaluate(input),
-    );
+  evaluate(input: { pageId?: string; expression: string }) {
+    return this.contextData.evaluate(input);
   }
 
   /** Handles cookies for the component. */
@@ -790,13 +732,11 @@ export class BrowserTools {
   /** Handles set cookies for the component. */
   @Tool({
     name: 'browser_set_cookies',
-    description:
-      'Set cookies in the selected isolated browser context. Requires explicit user approval.',
+    description: 'Set cookies in the selected isolated browser context.',
     inputSchema: z
       .object({
         pageId: z.string().uuid().optional(),
         cookies: z.array(z.record(z.string(), z.json())).min(1).max(100),
-        clientId: z.string().min(1).max(128),
       })
       .strict(),
     annotations: {
@@ -805,21 +745,11 @@ export class BrowserTools {
       idempotentHint: false,
     },
   })
-  setCookies(
-    input: {
-      pageId?: string;
-      cookies: Array<Record<string, unknown>>;
-      clientId: string;
-    },
-    context: McpContext,
-  ) {
-    return this.approvalHandler.run(
-      'browser',
-      'Modify browser cookies',
-      input,
-      context,
-      () => this.contextData.setCookies(input),
-    );
+  setCookies(input: {
+    pageId?: string;
+    cookies: Array<Record<string, unknown>>;
+  }) {
+    return this.contextData.setCookies(input);
   }
 
   /** Reads storage and returns the requested content. */
@@ -846,15 +776,13 @@ export class BrowserTools {
   /** Writes storage to the requested destination. */
   @Tool({
     name: 'browser_write_storage',
-    description:
-      'Set one localStorage or sessionStorage entry. Requires explicit user approval.',
+    description: 'Set one localStorage or sessionStorage entry.',
     inputSchema: z
       .object({
         pageId: z.string().uuid().optional(),
         storage: z.enum(['local', 'session']),
         key: z.string().min(1),
         value: z.string(),
-        clientId: z.string().min(1).max(128),
       })
       .strict(),
     annotations: {
@@ -863,34 +791,23 @@ export class BrowserTools {
       idempotentHint: false,
     },
   })
-  writeStorage(
-    input: {
-      pageId?: string;
-      storage: 'local' | 'session';
-      key: string;
-      value: string;
-      clientId: string;
-    },
-    context: McpContext,
-  ) {
-    return this.approvalHandler.run(
-      'browser',
-      'Modify browser web storage',
-      input,
-      context,
-      () => this.contextData.writeStorage(input),
-    );
+  writeStorage(input: {
+    pageId?: string;
+    storage: 'local' | 'session';
+    key: string;
+    value: string;
+  }) {
+    return this.contextData.writeStorage(input);
   }
 
   /** Clears session. */
   @Tool({
     name: 'browser_clear_session',
     description:
-      'Clear cookies, localStorage, and sessionStorage for a browser context. Requires explicit user approval.',
+      'Clear cookies, localStorage, and sessionStorage for a browser context.',
     inputSchema: z
       .object({
         pageId: z.string().uuid().optional(),
-        clientId: z.string().min(1).max(128),
       })
       .strict(),
     annotations: {
@@ -899,17 +816,8 @@ export class BrowserTools {
       idempotentHint: true,
     },
   })
-  clearSession(
-    input: { pageId?: string; clientId: string },
-    context: McpContext,
-  ) {
-    return this.approvalHandler.run(
-      'browser',
-      'Clear browser session cookies and storage',
-      input,
-      context,
-      () => this.contextData.clearSession(input.pageId),
-    );
+  clearSession(input: { pageId?: string }) {
+    return this.contextData.clearSession(input.pageId);
   }
 
   /** Sets the viewport dimensions for the selected browser page. */

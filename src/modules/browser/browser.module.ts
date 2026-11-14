@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ApprovalModule } from '../approval/approval.module.js';
 import { AppConfigModule } from '../../config/config.module.js';
 
 import { BrowserTools } from './tools/browser.tools.js';
@@ -12,7 +11,7 @@ import { BrowserInfoService } from './services/browser-info.service.js';
 
 // Registers focused browser services and the single MCP tools provider.
 @Module({
-  imports: [AppConfigModule, ApprovalModule],
+  imports: [AppConfigModule],
   providers: [
     BrowserSessionService,
     BrowserPageService,

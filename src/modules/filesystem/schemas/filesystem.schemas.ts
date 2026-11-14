@@ -6,19 +6,6 @@ const rootIndexSchema = z
   .min(0)
   .optional()
   .describe('Zero-based index of the configured allowed root.');
-const clientIdSchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .describe(
-    'Stable MCP client identifier used to bind approval to this operation.',
-  );
-const approvalIdSchema = z
-  .string()
-  .optional()
-  .describe(
-    'Approval request ID returned after the user approves the operation.',
-  );
 const relativePathSchema = z
   .string()
   .min(1)
@@ -52,13 +39,11 @@ export const writeFileInputSchema = z
       .describe(
         'UTF-8 content to write. For large files, use chunked transfer instead.',
       ),
-    clientId: clientIdSchema,
-    approvalRequestId: approvalIdSchema,
     rootIndex: rootIndexSchema,
   })
   .strict();
 
-// Defines a bounded batch of UTF-8 file writes with one approval for all overwrites.
+// Defines a bounded batch of UTF-8 file writes.
 export const writeMultipleFilesInputSchema = z
   .object({
     items: z
@@ -72,8 +57,6 @@ export const writeMultipleFilesInputSchema = z
       )
       .min(1)
       .max(100),
-    clientId: clientIdSchema,
-    approvalRequestId: approvalIdSchema,
     rootIndex: rootIndexSchema,
   })
   .strict()
@@ -94,12 +77,10 @@ export const createDirectoryInputSchema = z
   })
   .strict();
 
-// Defines an approval-controlled file deletion request.
+// Defines a file deletion request.
 export const deleteFileInputSchema = z
   .object({
     path: relativePathSchema,
-    clientId: clientIdSchema,
-    approvalRequestId: approvalIdSchema,
     rootIndex: rootIndexSchema,
   })
   .strict();
@@ -122,15 +103,13 @@ export const renamePathInputSchema = z
   })
   .strict();
 
-// Defines approval-controlled directory deletion.
+// Defines directory deletion.
 export const deleteDirectoryInputSchema = deleteFileInputSchema;
 
-// Defines a bulk delete request; the operation is approved as one bounded batch.
+// Defines a bounded bulk delete request.
 export const deleteMultipleInputSchema = z
   .object({
     paths: z.array(relativePathSchema).min(1).max(500),
-    clientId: clientIdSchema,
-    approvalRequestId: approvalIdSchema,
     rootIndex: rootIndexSchema,
   })
   .strict();
@@ -164,7 +143,6 @@ export const beginFileUploadInputSchema = z
       .regex(/^[a-fA-F0-9]{64}$/)
       .optional(),
     overwrite: z.boolean().optional(),
-    clientId: clientIdSchema,
     rootIndex: rootIndexSchema,
   })
   .strict();
@@ -178,11 +156,10 @@ export const writeFileChunkInputSchema = z
   })
   .strict();
 
-/** Finishes a verified upload and optionally supplies overwrite approval. */
+/** Finishes a verified upload and publishes the staged file. */
 export const finishFileUploadInputSchema = z
   .object({
     transferId: z.string().uuid(),
-    approvalRequestId: approvalIdSchema,
   })
   .strict();
 
@@ -219,7 +196,7 @@ export const createMultipleDirectoriesInputSchema = z
   })
   .strict();
 
-/** Defines an approval-controlled append to a UTF-8 file. */
+/** Defines an append operation for a UTF-8 file. */
 export const appendFileInputSchema = writeFileInputSchema;
 /** Defines an exact-match replacement request for an existing text file. */
 export const editFileInputSchema = z
@@ -227,8 +204,6 @@ export const editFileInputSchema = z
     path: relativePathSchema,
     oldText: z.string().min(1),
     newText: z.string(),
-    clientId: clientIdSchema,
-    approvalRequestId: approvalIdSchema,
     rootIndex: rootIndexSchema,
   })
   .strict();

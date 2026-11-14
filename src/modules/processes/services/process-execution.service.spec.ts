@@ -14,7 +14,6 @@ describe('ProcessExecutionService', () => {
         command: 'bash',
         args: [],
         workingDirectory: '/tmp',
-        clientId: 'test',
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
@@ -24,7 +23,6 @@ describe('ProcessExecutionService', () => {
         command: 'echo;id',
         args: [],
         workingDirectory: '/tmp',
-        clientId: 'test',
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
