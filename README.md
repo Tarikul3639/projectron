@@ -87,6 +87,12 @@ pnpm test        # Run unit tests
 pnpm test:e2e    # Run end-to-end tests
 ```
 
+## Logs and Errors
+
+Projectron logs the start, successful completion, duration, and actual failure details for Nest-managed operations, including MCP tool handlers. Known framework errors are preserved; unexpected runtime failures are surfaced to MCP clients with their original diagnostic message and error code instead of a generic error. Batch operations also log partial failures. Request payloads and complete document contents are not logged to avoid exposing secrets or private data.
+
+See [Logging and Error Reporting](docs/logging-and-errors.md) for log fields and filesystem-root troubleshooting.
+
 ## Security
 
 Configure filesystem roots carefully. Projectron retains domain-specific restrictions such as workspace boundaries, path traversal and symlink checks, protected environment-file handling, bounded command execution, blocked interactive shells and interpreters, and public-destination validation for outbound network requests. These controls are not an operating-system-level sandbox; run Projectron with an account whose OS permissions are appropriately limited.

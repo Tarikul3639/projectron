@@ -16,14 +16,12 @@ describe('DocumentsTools', () => {
 
   it('delegates reads and inspection to the document file service', async () => {
     const files = {
-      read: vi
-        .fn()
-        .mockResolvedValue({
-          path: 'README.md',
-          format: 'md',
-          content: '# Hello',
-          truncated: false,
-        }),
+      read: vi.fn().mockResolvedValue({
+        path: 'README.md',
+        format: 'md',
+        content: '# Hello',
+        truncated: false,
+      }),
       inspect: vi
         .fn()
         .mockResolvedValue({ path: 'README.md', format: 'md', words: 1 }),

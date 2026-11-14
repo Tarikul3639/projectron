@@ -17,14 +17,11 @@ describe('AppModule (e2e)', () => {
   });
 
   it('does not expose an HTTP route at /', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(404)
-      .expect({
-        message: 'Cannot GET /',
-        error: 'Not Found',
-        statusCode: 404,
-      });
+    return request(app.getHttpServer()).get('/').expect(404).expect({
+      message: 'Cannot GET /',
+      error: 'Not Found',
+      statusCode: 404,
+    });
   });
 
   afterEach(async () => {

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppConfigModule } from './config/config.module.js';
+import { LoggingInterceptor } from './common/logging/logging.interceptor.js';
 
 import { BrowserModule } from './modules/browser/browser.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
@@ -27,6 +29,12 @@ import { TerminalModule } from './modules/terminal/terminal.module.js';
     NetworkModule,
     SystemModule,
     McpModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
   ],
 })
 export class AppModule {}
