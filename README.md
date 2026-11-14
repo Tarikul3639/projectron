@@ -11,24 +11,26 @@
   Connect MCP-compatible AI clients to tools and workflows on your local computer.
 </p>
 
-Projectron is a local **Model Context Protocol (MCP) server** built with **NestJS** and **TypeScript**. It gives compatible AI assistants a structured way to interact with your computer through tools for filesystem access, terminal commands, browser automation, document handling, process management, network information, and system inspection. Tools execute directly after input validation and domain-specific restrictions pass; destructive-operation annotations remain impact metadata for MCP clients.
+Projectron is a local **Model Context Protocol (MCP) server** built with **NestJS** and **TypeScript**. It gives compatible AI assistants a structured way to interact with your computer through tools for filesystem access, terminal commands, browser automation, document handling, process management, network information, project workspaces, and system inspection. Tools execute directly after input validation and domain-specific restrictions pass; destructive-operation annotations remain impact metadata for MCP clients.
 
 ## Features
 
 - **MCP transports:** Connect through Streamable HTTP or STDIO.
-- **Filesystem tools:** Work with files and directories within configured allowed roots.
-- **Terminal tools:** Run supported commands in permitted working directories.
-- **Browser automation:** Control browser workflows with Playwright-powered tools.
-- **Document tools:** Work with local documents and conversions.
-- **Process management:** Inspect and manage processes started through Projectron.
-- **System and network tools:** Inspect system information and network details.
-- **Orchestration:** Plan and execute multi-step workflows through registered MCP tools.
-- **Local storage:** Store application data in local JSON files without requiring a database.
+- **Filesystem tools:** Read, write, search, edit, copy, move, delete, and transfer files within configured allowed roots.
+- **Terminal tools:** Run supported non-interactive commands in permitted working directories.
+- **Browser automation:** Use isolated Chromium contexts and tabs to navigate, inspect DOM/accessibility data, interact with pages, emulate viewports/devices, capture screenshots, create PDFs, trace sessions, and manage downloads.
+- **Document tools:** Read and create text documents, DOCX, XLSX, PPTX, and searchable text-first PDFs; inspect and convert supported formats.
+- **Process management:** Start and supervise processes launched through Projectron. System-wide process inspection is available separately through system diagnostics.
+- **Project workspaces:** Register, import, inspect, archive, restore, and discover project directories.
+- **System and network tools:** Inspect host metrics and diagnostics, resolve DNS, test public connectivity, and make bounded HTTP requests.
+- **Orchestration:** Create validated multi-step plans and execute one dependency-ready step per call.
+- **Local storage:** Persist application data in local JSON files without requiring a database.
 
 ## Requirements
 
-- Node.js
+- Node.js **20.19 or newer**
 - pnpm
+- Chromium dependencies supported by Playwright for browser automation
 
 ## Installation
 
@@ -63,19 +65,14 @@ Adjust the host or port if you changed the corresponding environment settings.
 
 ### STDIO
 
-Build Projectron:
+Build and start the dedicated STDIO MCP process:
 
 ```bash
 pnpm build
+pnpm start:mcp:stdio
 ```
 
-Configure your local MCP client to launch this command from the Projectron directory:
-
-```bash
-node /absolute/path/to/Projectron/dist/modules/mcp/transports/stdio.transport.js
-```
-
-The STDIO process should run from the Projectron directory so it can load the project's environment configuration.
+Configure your local MCP client to launch the STDIO command from the Projectron directory. STDIO and HTTP are separate transports; the STDIO process does not expose the HTTP endpoint.
 
 ## Development
 
@@ -87,6 +84,20 @@ pnpm test        # Run unit tests
 pnpm test:e2e    # Run end-to-end tests
 ```
 
+## Documentation
+
+The [documentation index](docs/README.md) links to the full guides:
+
+- [Installation and Running](docs/installation.md)
+- [Configuration](docs/configuration.md)
+- [Architecture](docs/architecture.md)
+- [MCP Client Connection](docs/client-connection.md)
+- [MCP Tools Reference](docs/tools.md)
+- [Browser Automation](docs/browser-automation.md)
+- [Office and Document Support](docs/document-support.md)
+- [Orchestration](docs/orchestration.md)
+- [Logging and Error Reporting](docs/logging-and-errors.md)
+
 ## Logs and Errors
 
 Projectron logs the start, successful completion, duration, and actual failure details for Nest-managed operations, including MCP tool handlers. Known framework errors are preserved; unexpected runtime failures are surfaced to MCP clients with their original diagnostic message and error code instead of a generic error. Batch operations also log partial failures. Request payloads and complete document contents are not logged to avoid exposing secrets or private data.
@@ -95,7 +106,7 @@ See [Logging and Error Reporting](docs/logging-and-errors.md) for log fields and
 
 ## Security
 
-Configure filesystem roots carefully. Projectron retains domain-specific restrictions such as workspace boundaries, path traversal and symlink checks, protected environment-file handling, bounded command execution, blocked interactive shells and interpreters, and public-destination validation for outbound network requests. These controls are not an operating-system-level sandbox; run Projectron with an account whose OS permissions are appropriately limited.
+Configure filesystem roots carefully. Projectron retains domain-specific restrictions such as workspace boundaries, path traversal and symlink checks, protected environment-file handling, bounded command execution, blocked interactive shells and interpreters, and public-destination validation for outbound network requests. Browser navigation blocks private and internal network destinations by default while allowing local loopback development servers. These controls are not an operating-system-level sandbox; run Projectron with an account whose OS permissions are appropriately limited.
 
 ## Technology
 
