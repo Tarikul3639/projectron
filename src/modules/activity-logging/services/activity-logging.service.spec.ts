@@ -45,7 +45,7 @@ describe('ActivityLoggingService', () => {
       },
     ]);
     const raw = await readFile(
-      join(root, 'logs/active/tool-executions.jsonl'),
+      join(root, 'logs/tool-executions.jsonl'),
       'utf8',
     );
     expect(raw.trim().split('\n')).toHaveLength(1);

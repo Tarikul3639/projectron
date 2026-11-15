@@ -14,5 +14,5 @@ export interface WorkspaceRecord {
 
 export interface WorkspaceStore {
   version: 1;
-  projects: WorkspaceRecord[]; // Legacy persisted key retained for registry compatibility.
+  workspaces: WorkspaceRecord[];
 }

@@ -22,7 +22,7 @@ import type {
   UpdateWorkspaceInput,
 } from '../interfaces/workspace-input.interface.js';
 
-const STORE_PATH = 'projects/projects.json';
+const STORE_PATH = 'workspaces/workspaces.json';
 
 function toWorkspaceSlug(name: string): string {
   const slug = name
@@ -94,7 +94,7 @@ export class WorkspacesService {
   /** Lists registered workspaces, excluding archived records unless requested. */
   async list(includeArchived = false): Promise<WorkspaceRecord[]> {
     const store = await this.readStore();
-    return store.projects.filter(
+    return store.workspaces.filter(
       (item) => includeArchived || item.status === 'active',
     );
   }
@@ -132,7 +132,7 @@ export class WorkspacesService {
     if (input.metadata !== undefined)
       project.metadata = { ...project.metadata, ...input.metadata };
     this.assertUniqueName(
-      store.projects,
+      store.workspaces,
       project.name,
       project.workspacePath,
       project.id,
@@ -172,7 +172,7 @@ export class WorkspacesService {
   ): Promise<{ workspaceId: string; workspacePath: string }> {
     const store = await this.readStore();
     const project = this.requireProject(store, input.workspaceId);
-    store.projects = store.projects.filter((item) => item.id !== project.id);
+    store.workspaces = store.workspaces.filter((item) => item.id !== project.id);
     await this.writeStore(store);
     return { workspaceId: project.id, workspacePath: project.workspacePath };
   }
@@ -239,8 +239,8 @@ export class WorkspacesService {
     metadata: Record<string, unknown>;
   }): Promise<WorkspaceRecord> {
     const store = await this.readStore();
-    this.assertUniqueName(store.projects, input.name, input.workspacePath);
-    const duplicatePath = store.projects.find(
+    this.assertUniqueName(store.workspaces, input.name, input.workspacePath);
+    const duplicatePath = store.workspaces.find(
       (item) => item.workspacePath === input.workspacePath,
     );
     if (duplicatePath)
@@ -253,7 +253,7 @@ export class WorkspacesService {
       updatedAt: now,
       archivedAt: null,
     };
-    store.projects.push(project);
+    store.workspaces.push(project);
     await this.writeStore(store);
     return project;
   }
@@ -317,9 +317,9 @@ export class WorkspacesService {
   /** Loads and validates the persisted workspace registry, or returns an empty store. */
   private async readStore(): Promise<WorkspaceStore> {
     if (!(await this.storage.exists(STORE_PATH)))
-      return { version: 1, projects: [] };
+      return { version: 1, workspaces: [] };
     const store = await this.storage.read<WorkspaceStore>(STORE_PATH);
-    if (store.version !== 1 || !Array.isArray(store.projects)) {
+    if (store.version !== 1 || !Array.isArray(store.workspaces)) {
       throw new BadRequestException(
         'Workspace registry is invalid or unsupported',
       );
@@ -334,7 +334,7 @@ export class WorkspacesService {
 
   /** Returns a registry record or raises a not-found error for an unknown ID. */
   private requireProject(store: WorkspaceStore, id: string): WorkspaceRecord {
-    const project = store.projects.find((item) => item.id === id);
+    const project = store.workspaces.find((item) => item.id === id);
     if (!project) throw new NotFoundException('Workspace not found');
     return project;
   }

@@ -7,7 +7,7 @@ import type {
 } from '../interfaces/log.interface.js';
 import { LogRedactionService } from './log-redaction.service.js';
 
-const LOG_DIR = 'logs/active';
+const LOG_DIR = 'logs';
 const LOG_FILE = LOG_DIR + '/tool-executions.jsonl';
 const MAX_RECORDS = 500;
 const MAX_RECORD_BYTES = 64 * 1024;

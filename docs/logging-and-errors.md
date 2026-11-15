@@ -1,7 +1,7 @@
 # Activity Logging
 
 New MCP tool executions are stored as one JSONL record per tool call in
-`storage/logs/active/tool-executions.jsonl`.
+`database/logs/tool-executions.jsonl`.
 
 Each record contains only:
 
