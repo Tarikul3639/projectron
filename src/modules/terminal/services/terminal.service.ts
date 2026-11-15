@@ -3,7 +3,6 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
-  Logger,
 } from '@nestjs/common';
 import { spawn } from 'node:child_process';
 import { mkdir, realpath } from 'node:fs/promises';
@@ -49,7 +48,6 @@ const BLOCKED_EXECUTABLES = new Set([
 /** Executes local programs without invoking a command shell. */
 @Injectable()
 export class TerminalService {
-  private readonly logger = new Logger(TerminalService.name);
   private readonly allowedRoots: string[];
   /** Injects command policy, workspace validation, and process execution dependencies for bounded terminal runs. */
   constructor(config: AppConfigService) {
@@ -106,9 +104,6 @@ export class TerminalService {
 
     const workingDirectory = await this.resolveWorkingDirectory(
       input.workingDirectory,
-    );
-    this.logger.log(
-      `\x1B[1;36mCOMMAND\x1B[0m \x1B[1;33m${executable}\x1B[0m (cwd: ${workingDirectory})`,
     );
     return this.spawnCommand(
       executable,
@@ -248,7 +243,6 @@ export class TerminalService {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
-        this.logger.error(`Unable to start command: ${command}`, error.stack);
         reject(
           new BadRequestException(`Unable to start command: ${error.message}`),
         );
@@ -258,9 +252,6 @@ export class TerminalService {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
-        this.logger.log(
-          `Command ${timedOut ? 'timed out' : `finished with exit code ${exitCode}`}: ${command} (${Date.now() - startedAt} ms)`,
-        );
         resolveResult({
           command,
           args: [...args],
