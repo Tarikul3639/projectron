@@ -22,7 +22,7 @@ import { ActivityLoggingService } from '../services/activity-logging.service.js'
 export class ActivityLoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger(ActivityLoggingInterceptor.name);
 
-  constructor(private readonly logs: ActivityLoggingService) { }
+  constructor(private readonly logs: ActivityLoggingService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const mcp = McpExecutionContext.create(context);

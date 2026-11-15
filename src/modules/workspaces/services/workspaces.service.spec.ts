@@ -10,15 +10,15 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ProjectsService } from './projects.service.js';
+import { WorkspacesService } from './workspaces.service.js';
 
-describe('ProjectsService', () => {
+describe('WorkspacesService', () => {
   let root: string;
-  let service: ProjectsService;
+  let service: WorkspacesService;
   const records = new Map<string, string>();
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'projectron-projects-'));
+    root = await mkdtemp(join(tmpdir(), 'projectron-workspaces-'));
     records.clear();
     const storage = {
       exists: vi.fn(async (path: string) => records.has(path)),
@@ -27,7 +27,7 @@ describe('ProjectsService', () => {
         records.set(path, JSON.stringify(value));
       }),
     };
-    service = new ProjectsService(
+    service = new WorkspacesService(
       storage as never,
       {
         filesystemAllowedRoots: root,
@@ -39,6 +39,7 @@ describe('ProjectsService', () => {
     const project = await service.create({ name: 'Alpha' });
     expect(project.status).toBe('active');
     expect(project.workspacePath.startsWith(root)).toBe(true);
+    expect(project.workspacePath).toContain('alpha-');
     expect((await service.list()).map((item) => item.id)).toContain(project.id);
   });
 
@@ -53,11 +54,10 @@ describe('ProjectsService', () => {
     );
   });
 
-  it('rejects importing a directory outside configured roots', async () => {
+  it('imports an existing directory outside configured roots', async () => {
     const outside = await mkdtemp(join(tmpdir(), 'outside-project-'));
-    await expect(service.import({ path: outside })).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    const project = await service.import({ path: outside });
+    expect(project.workspacePath).toBe(outside);
     await rm(outside, { recursive: true, force: true });
   });
 
@@ -72,10 +72,10 @@ describe('ProjectsService', () => {
 
   it('archives and restores a project without touching its workspace', async () => {
     const project = await service.create({ name: 'Alpha' });
-    await service.archive({ projectId: project.id });
+    await service.archive({ workspaceId: project.id });
     expect(await service.list()).toHaveLength(0);
     expect(await service.list(true)).toHaveLength(1);
-    await service.restore({ projectId: project.id });
+    await service.restore({ workspaceId: project.id });
     expect(await service.list()).toHaveLength(1);
   });
 
@@ -83,20 +83,20 @@ describe('ProjectsService', () => {
     const project = await service.create({ name: 'Alpha' });
     const marker = join(project.workspacePath, 'keep.txt');
     await writeFile(marker, 'source remains');
-    await service.remove({ projectId: project.id });
-    await expect(service.get({ projectId: project.id })).rejects.toThrow();
+    await service.remove({ workspaceId: project.id });
+    await expect(service.get({ workspaceId: project.id })).rejects.toThrow();
     expect(await readFile(marker, 'utf8')).toBe('source remains');
     await expect(access(project.workspacePath)).resolves.toBeUndefined();
   });
 
   it('verifies an active workspace and rejects archived context', async () => {
     const project = await service.create({ name: 'Alpha' });
-    expect((await service.getVerified({ projectId: project.id })).id).toBe(
+    expect((await service.getVerified({ workspaceId: project.id })).id).toBe(
       project.id,
     );
-    await service.archive({ projectId: project.id });
+    await service.archive({ workspaceId: project.id });
     await expect(
-      service.getVerified({ projectId: project.id }),
+      service.getVerified({ workspaceId: project.id }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

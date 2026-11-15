@@ -12,7 +12,7 @@ Projectron exposes feature capabilities as MCP tools. Tool names and input schem
 | **Filesystem**       | File and directory listing, recursive trees, reading, writing, searching, editing, copy/move/rename/delete, and staged large-file transfers inside configured roots.                                                            |
 | **Network**          | Local address information, DNS lookups, public-host connectivity and port checks, and bounded HTTP requests.                                                                                                                    |
 | **Processes**        | Start and supervise processes launched through this Projectron instance.                                                                                                                                                        |
-| **Projects**         | Create and import project workspaces, list and verify registered projects, update metadata, archive, restore, remove registry entries, and discover project directories.                                                        |
+| **Workspaces**         | Create new workspaces with readable folder names, register existing directories by location, and list, verify, update, archive, restore, unregister, or discover workspaces.                                                        |
 | **System**           | Host information, CPU and memory metrics, Linux disk I/O and temperatures, top processes, and performance diagnostics.                                                                                                          |
 | **Terminal**         | Run one supported non-interactive executable with separate arguments and bounded output/time.                                                                                                                                   |
 
@@ -61,6 +61,6 @@ See [Browser Automation](browser-automation.md) for examples.
 ## Other operational notes
 
 - Process inspection covers processes started and tracked by the current Projectron instance. Use system tools for host-wide process inspection.
-- Project archive, restore, and remove operations affect the project registry; removing a registry entry does not delete project files.
+- Project archive, restore, and remove operations affect the workspace registry; removing a registry entry does not delete workspace files.
 - Filesystem paths are restricted to configured roots. Network and browser tools apply destination validation and safety checks.
 - Every tool validates input against its declared schema. MCP annotations describe tool impact; they do not add a server-side interactive approval stage.

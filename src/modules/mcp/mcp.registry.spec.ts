@@ -7,9 +7,9 @@ describe('McpRegistryService', () => {
     const registry = {
       tools: [
         {
-          name: 'projects_list',
-          options: { description: 'List projects' },
-          where: 'ProjectsTools.list',
+          name: 'workspaces_list',
+          options: { description: 'List workspaces' },
+          where: 'WorkspacesTools.list',
           handler: () => undefined,
         },
       ],
@@ -21,9 +21,9 @@ describe('McpRegistryService', () => {
 
     expect(service.listTools()).toEqual([
       {
-        name: 'projects_list',
-        description: 'List projects',
-        source: 'ProjectsTools.list',
+        name: 'workspaces_list',
+        description: 'List workspaces',
+        source: 'WorkspacesTools.list',
       },
     ]);
     expect(service.listTools()[0]).not.toHaveProperty('handler');

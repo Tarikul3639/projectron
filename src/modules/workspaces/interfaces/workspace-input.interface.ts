@@ -1,26 +1,26 @@
-export interface CreateProjectInput {
+export interface CreateWorkspaceInput {
   name: string;
   description?: string;
   metadata?: Record<string, unknown>;
 }
-export interface ImportProjectInput {
+export interface ImportWorkspaceInput {
   name?: string;
   description?: string;
   path: string;
   metadata?: Record<string, unknown>;
 }
-export interface ProjectIdInput {
-  projectId: string;
+export interface WorkspaceIdInput {
+  workspaceId: string;
 }
-export interface UpdateProjectInput extends ProjectIdInput {
+export interface UpdateWorkspaceInput extends WorkspaceIdInput {
   name?: string;
   description?: string;
   metadata?: Record<string, unknown>;
 }
-export interface ProjectListInput {
+export interface WorkspaceListInput {
   includeArchived?: boolean;
 }
-export interface DiscoverProjectsInput {
+export interface DiscoverWorkspacesInput {
   path?: string;
   maxDepth?: number;
 }

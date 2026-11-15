@@ -2,7 +2,7 @@
 
 ## Goal
 
-Projectron is a local-first assistant backend. It exposes workspace, browser, document, system, network, process, and project capabilities as MCP tools.
+Projectron is a local-first assistant backend. It exposes workspace, browser, document, system, network, process, and workspace registry capabilities as MCP tools.
 
 ## Technology
 
@@ -30,7 +30,7 @@ src/
     ├── mcp/
     ├── network/
     ├── processes/
-    ├── projects/
+    ├── workspaces/
     ├── storage/
     ├── system/
     └── terminal/

@@ -11,22 +11,33 @@ import { delimiter, isAbsolute, relative, resolve, sep } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
 import { JsonStorageService } from '../../storage/services/json-storage.service.js';
 import type {
-  ProjectRecord,
-  ProjectStore,
-} from '../interfaces/projects.interface.js';
+  WorkspaceRecord,
+  WorkspaceStore,
+} from '../interfaces/workspaces.interface.js';
 import type {
-  CreateProjectInput,
-  DiscoverProjectsInput,
-  ImportProjectInput,
-  ProjectIdInput,
-  UpdateProjectInput,
-} from '../interfaces/project-input.interface.js';
+  CreateWorkspaceInput,
+  DiscoverWorkspacesInput,
+  ImportWorkspaceInput,
+  WorkspaceIdInput,
+  UpdateWorkspaceInput,
+} from '../interfaces/workspace-input.interface.js';
 
 const STORE_PATH = 'projects/projects.json';
 
+function toWorkspaceSlug(name: string): string {
+  const slug = name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+  return slug || 'workspace';
+}
+
 /** Project catalog and workspace metadata only; it never executes or edits project files. */
 @Injectable()
-export class ProjectsService {
+export class WorkspacesService {
   private readonly roots: string[];
 
   constructor(
@@ -45,10 +56,15 @@ export class ProjectsService {
   }
 
   /** Creates an empty workspace under the first configured root and registers it. */
-  async create(input: CreateProjectInput): Promise<ProjectRecord> {
+  async create(input: CreateWorkspaceInput): Promise<WorkspaceRecord> {
     const root = await this.getRoot(this.roots[0]);
     const id = randomUUID();
-    const workspacePath = resolve(root, '.projectron', 'projects', id);
+    const workspacePath = resolve(
+      root,
+      '.projectron',
+      'workspaces',
+      `${toWorkspaceSlug(input.name)}-${id.slice(0, 8)}`,
+    );
     await mkdir(workspacePath, { recursive: true });
     const actualPath = await realpath(workspacePath);
     this.assertInside(root, actualPath);
@@ -62,8 +78,8 @@ export class ProjectsService {
   }
 
   /** Registers an existing allowed directory without moving or modifying its contents. */
-  async import(input: ImportProjectInput): Promise<ProjectRecord> {
-    const workspacePath = await this.resolveAllowedDirectory(input.path);
+  async import(input: ImportWorkspaceInput): Promise<WorkspaceRecord> {
+    const workspacePath = await this.resolveWorkspaceDirectory(input.path);
     const inferredName =
       workspacePath.split(sep).filter(Boolean).at(-1) ?? 'Imported project';
     return this.register({
@@ -75,8 +91,8 @@ export class ProjectsService {
     });
   }
 
-  /** Lists registered projects, excluding archived records unless requested. */
-  async list(includeArchived = false): Promise<ProjectRecord[]> {
+  /** Lists registered workspaces, excluding archived records unless requested. */
+  async list(includeArchived = false): Promise<WorkspaceRecord[]> {
     const store = await this.readStore();
     return store.projects.filter(
       (item) => includeArchived || item.status === 'active',
@@ -84,18 +100,18 @@ export class ProjectsService {
   }
 
   /** Returns a project record by its stable identifier. */
-  async get(input: ProjectIdInput): Promise<ProjectRecord> {
+  async get(input: WorkspaceIdInput): Promise<WorkspaceRecord> {
     const store = await this.readStore();
-    return this.requireProject(store, input.projectId);
+    return this.requireProject(store, input.workspaceId);
   }
 
   /** Confirms that an active workspace still resolves inside an allowed root. */
-  async getVerified(input: ProjectIdInput): Promise<ProjectRecord> {
+  async getVerified(input: WorkspaceIdInput): Promise<WorkspaceRecord> {
     const project = await this.get(input);
     if (project.status !== 'active') {
-      throw new BadRequestException('Archived projects are not active');
+      throw new BadRequestException('Archived workspaces are not active');
     }
-    const workspacePath = await this.resolveAllowedDirectory(
+    const workspacePath = await this.resolveWorkspaceDirectory(
       project.workspacePath,
     );
     if (workspacePath !== project.workspacePath) {
@@ -107,9 +123,9 @@ export class ProjectsService {
   }
 
   /** Updates editable project metadata and persists the registry. */
-  async update(input: UpdateProjectInput): Promise<ProjectRecord> {
+  async update(input: UpdateWorkspaceInput): Promise<WorkspaceRecord> {
     const store = await this.readStore();
-    const project = this.requireProject(store, input.projectId);
+    const project = this.requireProject(store, input.workspaceId);
     if (input.name !== undefined) project.name = input.name.trim();
     if (input.description !== undefined)
       project.description = input.description;
@@ -127,9 +143,9 @@ export class ProjectsService {
   }
 
   /** Archives a project record without changing its workspace directory. */
-  async archive(input: ProjectIdInput): Promise<ProjectRecord> {
+  async archive(input: WorkspaceIdInput): Promise<WorkspaceRecord> {
     const store = await this.readStore();
-    const project = this.requireProject(store, input.projectId);
+    const project = this.requireProject(store, input.workspaceId);
     if (project.status === 'archived') return project;
     project.status = 'archived';
     project.archivedAt = new Date().toISOString();
@@ -139,9 +155,9 @@ export class ProjectsService {
   }
 
   /** Reactivates an archived project record without changing its workspace. */
-  async restore(input: ProjectIdInput): Promise<ProjectRecord> {
+  async restore(input: WorkspaceIdInput): Promise<WorkspaceRecord> {
     const store = await this.readStore();
-    const project = this.requireProject(store, input.projectId);
+    const project = this.requireProject(store, input.workspaceId);
     if (project.status === 'active') return project;
     project.status = 'active';
     project.archivedAt = null;
@@ -152,19 +168,19 @@ export class ProjectsService {
 
   /** Unregisters metadata only. It deliberately never deletes the user's workspace. */
   async remove(
-    input: ProjectIdInput,
-  ): Promise<{ projectId: string; workspacePath: string }> {
+    input: WorkspaceIdInput,
+  ): Promise<{ workspaceId: string; workspacePath: string }> {
     const store = await this.readStore();
-    const project = this.requireProject(store, input.projectId);
+    const project = this.requireProject(store, input.workspaceId);
     store.projects = store.projects.filter((item) => item.id !== project.id);
     await this.writeStore(store);
-    return { projectId: project.id, workspacePath: project.workspacePath };
+    return { workspaceId: project.id, workspacePath: project.workspacePath };
   }
 
   /** Finds likely project roots by checking common manifest and repository markers. */
-  async discover(input: DiscoverProjectsInput = {}) {
+  async discover(input: DiscoverWorkspacesInput = {}) {
     const start = input.path
-      ? await this.resolveAllowedDirectory(input.path)
+      ? await this.resolveWorkspaceDirectory(input.path)
       : await this.getRoot(this.roots[0]);
     const maxDepth = input.maxDepth ?? 2;
     const found: Array<{ name: string; path: string; indicators: string[] }> =
@@ -211,7 +227,7 @@ export class ProjectsService {
       }
     };
     await visit(start, 0);
-    return { root: start, projects: found };
+    return { root: start, workspaces: found };
   }
 
   /** Validates uniqueness, creates the registry record, and persists it. */
@@ -221,7 +237,7 @@ export class ProjectsService {
     description: string;
     workspacePath: string;
     metadata: Record<string, unknown>;
-  }): Promise<ProjectRecord> {
+  }): Promise<WorkspaceRecord> {
     const store = await this.readStore();
     this.assertUniqueName(store.projects, input.name, input.workspacePath);
     const duplicatePath = store.projects.find(
@@ -230,7 +246,7 @@ export class ProjectsService {
     if (duplicatePath)
       throw new ConflictException('This workspace is already registered');
     const now = new Date().toISOString();
-    const project: ProjectRecord = {
+    const project: WorkspaceRecord = {
       ...input,
       status: 'active',
       createdAt: now,
@@ -244,7 +260,7 @@ export class ProjectsService {
 
   /** Prevents duplicate project names, ignoring letter case. */
   private assertUniqueName(
-    projects: ProjectRecord[],
+    projects: WorkspaceRecord[],
     name: string,
     _path: string,
     exceptId?: string,
@@ -260,22 +276,14 @@ export class ProjectsService {
     }
   }
 
-  /** Canonicalizes a directory and rejects paths outside configured allowed roots. */
-  private async resolveAllowedDirectory(path: string): Promise<string> {
+  /** Canonicalizes any existing directory so workspaces can be registered at arbitrary locations. */
+  private async resolveWorkspaceDirectory(path: string): Promise<string> {
     const requested = isAbsolute(path)
       ? resolve(path)
       : resolve(this.roots[0], path);
     const actual = await realpath(requested).catch(() => null);
     if (!actual)
       throw new NotFoundException('Workspace directory does not exist');
-    const allowed = await Promise.all(
-      this.roots.map((root) => this.getRoot(root)),
-    );
-    if (!allowed.some((root) => this.isInside(root, actual))) {
-      throw new BadRequestException(
-        'Workspace must be inside a configured allowed root',
-      );
-    }
     const { stat } = await import('node:fs/promises');
     if (!(await stat(actual)).isDirectory())
       throw new BadRequestException('Workspace path must be a directory');
@@ -306,28 +314,28 @@ export class ProjectsService {
     }
   }
 
-  /** Loads and validates the persisted project registry, or returns an empty store. */
-  private async readStore(): Promise<ProjectStore> {
+  /** Loads and validates the persisted workspace registry, or returns an empty store. */
+  private async readStore(): Promise<WorkspaceStore> {
     if (!(await this.storage.exists(STORE_PATH)))
       return { version: 1, projects: [] };
-    const store = await this.storage.read<ProjectStore>(STORE_PATH);
+    const store = await this.storage.read<WorkspaceStore>(STORE_PATH);
     if (store.version !== 1 || !Array.isArray(store.projects)) {
       throw new BadRequestException(
-        'Project registry is invalid or unsupported',
+        'Workspace registry is invalid or unsupported',
       );
     }
     return store;
   }
 
-  /** Persists the complete project registry through the shared JSON storage service. */
-  private writeStore(store: ProjectStore): Promise<void> {
+  /** Persists the complete workspace registry through the shared JSON storage service. */
+  private writeStore(store: WorkspaceStore): Promise<void> {
     return this.storage.write(STORE_PATH, store);
   }
 
   /** Returns a registry record or raises a not-found error for an unknown ID. */
-  private requireProject(store: ProjectStore, id: string): ProjectRecord {
+  private requireProject(store: WorkspaceStore, id: string): WorkspaceRecord {
     const project = store.projects.find((item) => item.id === id);
-    if (!project) throw new NotFoundException('Project not found');
+    if (!project) throw new NotFoundException('Workspace not found');
     return project;
   }
 }
