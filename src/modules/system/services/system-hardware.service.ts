@@ -91,10 +91,13 @@ export class SystemHardwareService {
       source: 'thermal-zone' | 'hwmon';
     }> = [];
 
+    // Thermal zones expose temperatures in millidegrees Celsius.
     try {
       const zones = await readdir(SYS_THERMAL, { withFileTypes: true });
       for (const zone of zones.filter(
-        (entry) => entry.isDirectory() && /^thermal_zone\d+$/.test(entry.name),
+        (entry) =>
+          (entry.isDirectory() || entry.isSymbolicLink()) &&
+          /^thermal_zone\d+$/.test(entry.name),
       )) {
         try {
           const base = `${SYS_THERMAL}/${zone.name}`;
@@ -103,7 +106,11 @@ export class SystemHardwareService {
             readFile(`${base}/type`, 'utf8').catch(() => zone.name),
           ]);
           const temperatureCelsius = Number(raw.trim()) / 1000;
-          if (Number.isFinite(temperatureCelsius)) {
+          if (
+            Number.isFinite(temperatureCelsius) &&
+            temperatureCelsius > -50 &&
+            temperatureCelsius < 250
+          ) {
             sensors.push({
               sensor: zone.name,
               label: type.trim(),
@@ -119,10 +126,11 @@ export class SystemHardwareService {
       // Thermal zones are optional on Linux.
     }
 
+    // hwmon indices are dynamic; discover each controller by directory.
     try {
       const controllers = await readdir(SYS_HWMON, { withFileTypes: true });
-      for (const controller of controllers.filter((entry) =>
-        entry.isDirectory(),
+      for (const controller of controllers.filter(
+        (entry) => entry.isDirectory() || entry.isSymbolicLink(),
       )) {
         const base = `${SYS_HWMON}/${controller.name}`;
         const chipName = await readFile(`${base}/name`, 'utf8').catch(
