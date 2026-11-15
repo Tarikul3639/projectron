@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { extname } from 'node:path';
+import { execFile as execFileCallback } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { basename, extname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { DocumentFileService } from './document-file.service.js';
 import { DocumentConverterService } from './document-converter.service.js';
 import { WordDocumentService } from './word-document.service.js';
@@ -8,7 +12,10 @@ import { PresentationDocumentService } from './presentation-document.service.js'
 import { PdfDocumentService } from './pdf-document.service.js';
 import type { OfficeConvertInput } from '../types/documents.type.js';
 
-/** Coordinates explicit conversions between supported Office and text formats. */
+const OFFICE_RENDERERS = ['libreoffice', 'soffice', 'lowriter'] as const;
+const RENDER_TIMEOUT_MS = 120_000;
+
+/** Coordinates Office conversions and preserves native Office layout when exporting PDFs. */
 @Injectable()
 export class OfficeConverterService {
   constructor(
@@ -20,7 +27,7 @@ export class OfficeConverterService {
     private readonly pdf: PdfDocumentService,
   ) {}
 
-  /** Converts supported Office formats to TXT, HTML, CSV, JSON, or a text-first PDF. */
+  /** Converts supported Office formats; PDF export preserves layout by default. */
   async convert(input: OfficeConvertInput) {
     const source = extname(input.sourcePath).slice(1).toLowerCase();
     const target = extname(input.destinationPath).slice(1).toLowerCase();
@@ -35,24 +42,29 @@ export class OfficeConverterService {
     };
 
     if (target === 'pdf') {
-      if (source === 'pdf') {
-        throw new BadRequestException('PDF-to-PDF conversion is not supported');
+      if (!['docx', 'xlsx', 'pptx'].includes(source)) {
+        throw new BadRequestException(
+          'PDF export supports DOCX, XLSX, and PPTX sources only',
+        );
       }
-      const content = await this.extractText(
-        input.sourcePath,
-        source,
-        input.rootIndex,
-      );
-      const title =
-        input.destinationPath.split(/[\\/]/).pop() ?? 'Converted document';
-      return this.pdf.createFromText(
-        input.destinationPath,
-        title.replace(/\.pdf$/i, ''),
-        content,
-        'Projectron',
-        options.overwrite,
-        options.rootIndex,
-      );
+      if (input.pdfMode === 'text-first') {
+        const content = await this.extractText(
+          input.sourcePath,
+          source,
+          input.rootIndex,
+        );
+        const title =
+          input.destinationPath.split(/[\\/]/).pop() ?? 'Converted document';
+        return this.pdf.createFromText(
+          input.destinationPath,
+          title.replace(/\.pdf$/i, ''),
+          content,
+          'Projectron',
+          options.overwrite,
+          options.rootIndex,
+        );
+      }
+      return this.renderPdfPreservingLayout(input, source);
     }
 
     if (target === 'html' && source === 'docx') {
@@ -133,8 +145,111 @@ export class OfficeConverterService {
         source +
         ' to .' +
         target +
-        ' is not supported. Supported Office conversions: DOCX to TXT/HTML/PDF; XLSX to CSV/JSON/TXT/PDF; PPTX to TXT/PDF; PDF to TXT.',
+        ' is not supported. Supported Office conversions: DOCX to TXT/HTML/PDF, XLSX to CSV/JSON/TXT/PDF, PPTX to TXT/PDF, PDF to TXT, and supported text formats to one another.',
     );
+  }
+
+  /**
+   * Uses LibreOffice's native Office renderer. No text-only fallback is attempted
+   * here: if the renderer is missing or fails, the destination is left untouched.
+   */
+  async renderPdfPreservingLayout(
+    input: OfficeConvertInput,
+    sourceFormat: string,
+  ) {
+    const sourceFile = await this.files.readBinary(
+      input.sourcePath,
+      input.rootIndex,
+    );
+    const renderer = await this.findOfficeRenderer();
+    if (!renderer) {
+      throw new BadRequestException(
+        'Layout-preserving PDF export requires LibreOffice (libreoffice or soffice). No compatible renderer was found; no PDF was created. Set pdfMode="text-first" only if a simplified, non-layout-preserving PDF is acceptable.',
+      );
+    }
+
+    const tempDirectory = await mkdtemp(
+      join(tmpdir(), 'projectron-office-pdf-'),
+    );
+    const sourceName = basename(input.sourcePath);
+    const tempSource = join(tempDirectory, sourceName);
+    const expectedPdf = join(
+      tempDirectory,
+      sourceName.slice(0, -extname(sourceName).length) + '.pdf',
+    );
+    const profile = join(tempDirectory, 'lo-profile');
+
+    try {
+      await writeFile(tempSource, sourceFile.buffer);
+      await new Promise<void>((resolve, reject) => {
+        execFileCallback(
+          renderer,
+          [
+            '--headless',
+            '-env:UserInstallation=' + pathToFileURL(profile).href,
+            '--convert-to',
+            'pdf',
+            '--outdir',
+            tempDirectory,
+            tempSource,
+          ],
+          { timeout: RENDER_TIMEOUT_MS, maxBuffer: 5 * 1024 * 1024 },
+          (error, _stdout, stderr) => {
+            if (error) {
+              reject(
+                new BadRequestException(
+                  'Office renderer failed to export PDF: ' +
+                    (stderr?.trim() || error.message),
+                ),
+              );
+              return;
+            }
+            resolve();
+          },
+        );
+      });
+
+      const pdfBuffer = await readFile(expectedPdf).catch(() => {
+        throw new BadRequestException(
+          'Office renderer completed without producing the expected PDF file',
+        );
+      });
+      if (!pdfBuffer.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
+        throw new BadRequestException(
+          'Office renderer output is not a valid PDF document',
+        );
+      }
+      const written = await this.files.writeBinary(
+        input.destinationPath,
+        pdfBuffer,
+        input.overwrite,
+        input.rootIndex,
+      );
+      return {
+        ...written,
+        format: 'pdf',
+        sourceFormat,
+        renderer,
+        layoutPreserved: true,
+      };
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  }
+
+  private async findOfficeRenderer(): Promise<string | undefined> {
+    for (const renderer of OFFICE_RENDERERS) {
+      const available = await new Promise<boolean>((resolve) => {
+        execFileCallback(
+          renderer,
+          ['--version'],
+          { timeout: 10_000, maxBuffer: 1024 * 1024 },
+          (error) => resolve(!error),
+        );
+      });
+      if (available) return renderer;
+    }
+    return undefined;
   }
 
   private async extractText(

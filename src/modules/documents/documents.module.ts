@@ -5,6 +5,7 @@ import { DocumentFileService } from './services/document-file.service.js';
 import { DocumentConverterService } from './services/document-converter.service.js';
 import { DocumentTemplateService } from './services/document-template.service.js';
 import { WordDocumentService } from './services/word-document.service.js';
+import { WordTemplateEditService } from './services/word-template-edit.service.js';
 import { SpreadsheetDocumentService } from './services/spreadsheet-document.service.js';
 import { PresentationDocumentService } from './services/presentation-document.service.js';
 import { PdfDocumentService } from './services/pdf-document.service.js';
@@ -18,6 +19,7 @@ import { OfficeConverterService } from './services/office-converter.service.js';
     DocumentConverterService,
     DocumentTemplateService,
     WordDocumentService,
+    WordTemplateEditService,
     SpreadsheetDocumentService,
     PresentationDocumentService,
     PdfDocumentService,
@@ -29,6 +31,7 @@ import { OfficeConverterService } from './services/office-converter.service.js';
     DocumentConverterService,
     DocumentTemplateService,
     WordDocumentService,
+    WordTemplateEditService,
     SpreadsheetDocumentService,
     PresentationDocumentService,
     PdfDocumentService,

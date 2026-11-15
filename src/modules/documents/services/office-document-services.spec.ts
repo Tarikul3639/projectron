@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -136,7 +136,7 @@ describe('Office document services', () => {
     expect(read.content).toContain('searchable text');
   });
 
-  it('converts XLSX to CSV and DOCX to text-first PDF', async () => {
+  it('converts XLSX to CSV and DOCX to text-first PDF only when requested', async () => {
     const word = new WordDocumentService(files);
     const spreadsheet = new SpreadsheetDocumentService(files);
     const presentation = new PresentationDocumentService(files);
@@ -180,11 +180,45 @@ describe('Office document services', () => {
       sourcePath: 'source.docx',
       destinationPath: 'export.pdf',
       overwrite: false,
+      pdfMode: 'text-first',
       clientId: 'test-client',
     });
     const csv = await files.read({ path: 'export.csv' });
     const pdfText = await pdf.read('export.pdf');
     expect(csv.content).toContain('Alpha');
     expect(pdfText.content).toContain('Conversion preserves readable text.');
+  });
+
+  it('fails safely instead of silently creating a text-first PDF by default', async () => {
+    const word = new WordDocumentService(files);
+    const converter = new OfficeConverterService(
+      files,
+      new DocumentConverterService(files),
+      word,
+      new SpreadsheetDocumentService(files),
+      new PresentationDocumentService(files),
+      new PdfDocumentService(files),
+    );
+    await word.create({
+      path: 'layout-source.docx',
+      title: 'Layout Source',
+      sections: [{ paragraphs: ['Original formatting must be retained.'] }],
+      overwrite: false,
+      clientId: 'test-client',
+    });
+    vi.spyOn(
+      converter as unknown as { findOfficeRenderer: () => Promise<string | undefined> },
+      'findOfficeRenderer',
+    ).mockResolvedValue(undefined);
+
+    await expect(
+      converter.convert({
+        sourcePath: 'layout-source.docx',
+        destinationPath: 'layout-output.pdf',
+        overwrite: false,
+        clientId: 'test-client',
+      }),
+    ).rejects.toThrow(/Layout-preserving PDF export requires LibreOffice/);
+    await expect(files.readBinary('layout-output.pdf')).rejects.toThrow();
   });
 });

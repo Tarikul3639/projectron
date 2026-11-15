@@ -6,6 +6,7 @@ import { DocumentFileService } from '../services/document-file.service.js';
 import { DocumentConverterService } from '../services/document-converter.service.js';
 import { DocumentTemplateService } from '../services/document-template.service.js';
 import { WordDocumentService } from '../services/word-document.service.js';
+import { WordTemplateEditService } from '../services/word-template-edit.service.js';
 import { SpreadsheetDocumentService } from '../services/spreadsheet-document.service.js';
 import { PresentationDocumentService } from '../services/presentation-document.service.js';
 import { PdfDocumentService } from '../services/pdf-document.service.js';
@@ -20,6 +21,7 @@ export class DocumentsTools {
     private readonly converter: DocumentConverterService,
     private readonly templates: DocumentTemplateService,
     private readonly word: WordDocumentService,
+    private readonly wordTemplateEdit: WordTemplateEditService,
     private readonly spreadsheet: SpreadsheetDocumentService,
     private readonly presentation: PresentationDocumentService,
     private readonly pdf: PdfDocumentService,
@@ -77,10 +79,12 @@ export class DocumentsTools {
         'convert',
         'generate_template',
         'extract_text',
+        'edit_word_template',
         'spreadsheet_export',
       ],
       officeTools: [
         'documents_create_word',
+        'documents_edit_word_template',
         'documents_read_word',
         'documents_create_spreadsheet',
         'documents_read_spreadsheet',
@@ -96,11 +100,13 @@ export class DocumentsTools {
         officeDocumentBytes: 50 * 1024 * 1024,
         maximumSpreadsheetRowsPerSheet: 10000,
         maximumPresentationSlides: 100,
+        maximumWordTemplateReplacements: 100,
       },
       conversions: [
-        'DOCX to TXT, HTML, or text-first PDF',
-        'XLSX to CSV, JSON, TXT, or text-first PDF',
-        'PPTX to TXT or text-first PDF',
+        'DOCX/XLSX/PPTX to layout-preserving PDF via LibreOffice by default; text-first PDF only when explicitly requested',
+        'DOCX to TXT or HTML',
+        'XLSX to CSV, JSON, or TXT',
+        'PPTX to TXT',
         'PDF to TXT',
         'Supported text formats to other supported text formats',
       ],
@@ -109,8 +115,10 @@ export class DocumentsTools {
       limitations: [
         'Legacy binary Word/Excel/PowerPoint files (.doc, .xls, .ppt) are not supported.',
         'OpenDocument formats (.odt, .ods, .odp) are not supported.',
-        'PDF creation and Office-to-PDF conversion produce text-first PDFs and do not preserve original Office page layouts, charts, or visual styling.',
+        'Layout-preserving Office-to-PDF conversion requires an installed LibreOffice-compatible executable (libreoffice, soffice, or lowriter); without one, conversion fails safely instead of silently degrading the layout. Explicit text-first mode does not preserve Office layout, charts, or visual styling.',
         'DOCX generation currently supports headings, paragraphs, bullet lists, and simple tables; embedded images and complex page layouts are not implemented.',
+        'DOCX template editing preserves the existing OOXML package, styles, page settings, headers, footers, and other template parts while replacing text inside Word text runs.',
+        'DOCX template editing does not redesign the document and writes to a separate destination path; replacements that cross Word text runs are supported.',
         'XLSX generation supports multiple sheets, cell values, header formatting, filters, and frozen header rows; native Excel chart generation is not implemented.',
         'PPTX generation supports slide titles, body text, bullet lists, and speaker notes; existing PPTX editing and chart generation are not implemented.',
         'PDF text extraction does not perform OCR on scanned pages.',
@@ -216,6 +224,22 @@ export class DocumentsTools {
   })
   createWord(input: t.WordCreateInput) {
     return this.word.create(input);
+  }
+
+  /** Applies replacements to an existing Word template while preserving the original DOCX package and formatting. */
+  @Tool({
+    name: 'documents_edit_word_template',
+    description:
+      'Create a new .docx from an existing Word template by replacing exact text or placeholders while preserving the template layout, styles, headers, footers, and other OOXML parts. The source template is never edited in place.',
+    inputSchema: s.wordTemplateEditSchema,
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+    },
+  })
+  editWordTemplate(input: t.WordTemplateEditInput) {
+    return this.wordTemplateEdit.edit(input);
   }
 
   /** Extracts plain text and metadata from a Word DOCX file. */
@@ -417,7 +441,7 @@ export class DocumentsTools {
   @Tool({
     name: 'documents_convert_office',
     description:
-      'Convert DOCX to TXT/HTML/PDF, XLSX to CSV/JSON/TXT/PDF, PPTX to TXT/PDF, PDF to TXT, and supported text formats to one another.',
+      'Convert DOCX/XLSX/PPTX to layout-preserving PDF by default using LibreOffice. If no compatible renderer is installed, fail without creating a degraded PDF. Set pdfMode=text-first only when a simplified PDF is explicitly acceptable. Also supports DOCX to TXT/HTML, XLSX to CSV/JSON/TXT, PPTX to TXT, PDF to TXT, and supported text formats.',
     inputSchema: s.officeConvertSchema,
     annotations: {
       readOnlyHint: false,

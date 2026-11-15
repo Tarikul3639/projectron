@@ -100,6 +100,28 @@ export const wordCreateSchema = z
   })
   .strict();
 
+export const wordTemplateEditSchema = z
+  .object({
+    sourcePath: officeRelativePath,
+    destinationPath: officeRelativePath,
+    replacements: z
+      .array(
+        z
+          .object({
+            find: z.string().min(1).max(2000),
+            replaceWith: z.string().max(20000),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(100),
+    requireAll: z.boolean().optional().default(true),
+    overwrite: z.boolean().optional().default(false),
+    clientId: officeClientId,
+    rootIndex: officeRootIndex,
+  })
+  .strict();
+
 export const spreadsheetCreateSchema = z
   .object({
     path: officeRelativePath,
@@ -201,6 +223,7 @@ export const officeConvertSchema = z
     sourcePath: officeRelativePath,
     destinationPath: officeRelativePath,
     overwrite: z.boolean().optional().default(false),
+    pdfMode: z.enum(['preserve-layout', 'text-first']).optional(),
     clientId: officeClientId,
     rootIndex: officeRootIndex,
   })

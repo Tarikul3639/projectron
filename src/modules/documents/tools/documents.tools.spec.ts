@@ -3,6 +3,7 @@ import { DocumentFileService } from '../services/document-file.service.js';
 import { DocumentConverterService } from '../services/document-converter.service.js';
 import { DocumentTemplateService } from '../services/document-template.service.js';
 import { WordDocumentService } from '../services/word-document.service.js';
+import { WordTemplateEditService } from '../services/word-template-edit.service.js';
 import { SpreadsheetDocumentService } from '../services/spreadsheet-document.service.js';
 import { PresentationDocumentService } from '../services/presentation-document.service.js';
 import { PdfDocumentService } from '../services/pdf-document.service.js';
@@ -14,6 +15,7 @@ function createTools(
   converter = {} as DocumentConverterService,
   templates = {} as DocumentTemplateService,
   word = {} as WordDocumentService,
+  wordTemplateEdit = {} as WordTemplateEditService,
   spreadsheet = {} as SpreadsheetDocumentService,
   presentation = {} as PresentationDocumentService,
   pdf = {} as PdfDocumentService,
@@ -24,6 +26,7 @@ function createTools(
     converter,
     templates,
     word,
+    wordTemplateEdit,
     spreadsheet,
     presentation,
     pdf,
@@ -41,6 +44,7 @@ describe('DocumentsTools', () => {
     expect(capabilities.formats).toContain('PPTX');
     expect(capabilities.formats).toContain('PDF');
     expect(capabilities.officeTools).toContain('documents_create_presentation');
+    expect(capabilities.officeTools).toContain('documents_edit_word_template');
   });
 
   it('delegates reads and inspection to the document file service', async () => {
@@ -78,6 +82,29 @@ describe('DocumentsTools', () => {
     expect(files.create).toHaveBeenCalledWith(input);
   });
 
+  it('delegates Word template editing to the template service', async () => {
+    const wordTemplateEdit = {
+      edit: vi.fn().mockResolvedValue({ format: 'docx', templatePreserved: true }),
+    };
+    const tools = createTools(
+      {} as DocumentFileService,
+      {} as DocumentConverterService,
+      {} as DocumentTemplateService,
+      {} as WordDocumentService,
+      wordTemplateEdit as unknown as WordTemplateEditService,
+    );
+    const input = {
+      sourcePath: 'template.docx',
+      destinationPath: 'tailored.docx',
+      replacements: [{ find: '{{Company}}', replaceWith: 'Acme' }],
+      requireAll: true,
+      overwrite: false,
+      clientId: 'test-client',
+    };
+    await tools.editWordTemplate(input);
+    expect(wordTemplateEdit.edit).toHaveBeenCalledWith(input);
+  });
+
   it('delegates Office creation to the format-specific services', async () => {
     const word = { create: vi.fn().mockResolvedValue({ format: 'docx' }) };
     const spreadsheet = {
@@ -92,6 +119,7 @@ describe('DocumentsTools', () => {
       {} as DocumentConverterService,
       {} as DocumentTemplateService,
       word as unknown as WordDocumentService,
+      {} as WordTemplateEditService,
       spreadsheet as unknown as SpreadsheetDocumentService,
       presentation as unknown as PresentationDocumentService,
       pdf as unknown as PdfDocumentService,

@@ -6,6 +6,7 @@ import type {
   documentReadSchema,
   documentTemplateSchema,
   wordCreateSchema,
+  wordTemplateEditSchema,
   spreadsheetCreateSchema,
   presentationCreateSchema,
   pdfCreateSchema,
@@ -22,6 +23,7 @@ export type DocumentCreateInput = z.infer<typeof documentCreateSchema>;
 export type DocumentConvertInput = z.infer<typeof documentConvertSchema>;
 export type DocumentTemplateInput = z.infer<typeof documentTemplateSchema>;
 export type WordCreateInput = z.infer<typeof wordCreateSchema>;
+export type WordTemplateEditInput = z.infer<typeof wordTemplateEditSchema>;
 export type SpreadsheetCreateInput = z.infer<typeof spreadsheetCreateSchema>;
 export type PresentationCreateInput = z.infer<typeof presentationCreateSchema>;
 export type PdfCreateInput = z.infer<typeof pdfCreateSchema>;
