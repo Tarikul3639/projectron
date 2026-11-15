@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { Mutex } from 'async-mutex';
 import type {
   CoordinationTask,
   ExecutionSession,
@@ -26,6 +27,86 @@ export class CoordinationService {
   private readonly sessions = new Map<string, ExecutionSession>();
   private readonly locks = new Map<string, Map<string, ResourceLock>>();
   private readonly tasks = new Map<string, CoordinationTask>();
+  private readonly operationMutexes = new Map<string, Mutex>();
+
+  /**
+   * Runs a resource mutation under an internal exclusive lock. Concurrent
+   * operations for the same resource are queued without extra client tool calls.
+   */
+  async withExclusiveLock<T>(
+    resource: string,
+    operation: () => Promise<T>,
+    clientName = 'internal-resource-operation',
+  ): Promise<T> {
+    let mutex = this.operationMutexes.get(resource);
+    if (!mutex) {
+      mutex = new Mutex();
+      this.operationMutexes.set(resource, mutex);
+    }
+
+    try {
+      return await mutex.runExclusive(async () => {
+        let sessionId: string | undefined;
+        try {
+          const session = this.registerSession({
+            clientId: 'projectron-internal',
+            clientName,
+            leaseSeconds: 3600,
+          });
+          sessionId = session.sessionId;
+          const result = this.acquireLock({
+            sessionId,
+            resource,
+            mode: 'write',
+            leaseSeconds: 3600,
+          });
+          if (!result.acquired) {
+            throw new ConflictException(
+              'Resource is currently locked: ' + resource,
+            );
+          }
+          return await operation();
+        } finally {
+          if (sessionId) {
+            this.releaseLock(sessionId, resource);
+            this.unregisterSession(sessionId);
+          }
+        }
+      });
+    } finally {
+      // A waiting caller keeps the mutex locked; only discard an idle mutex.
+      if (!mutex.isLocked() && this.operationMutexes.get(resource) === mutex) {
+        this.operationMutexes.delete(resource);
+      }
+    }
+  }
+
+  /** Acquires multiple resources in stable order to avoid lock-order deadlocks. */
+  async withExclusiveLocks<T>(
+    resources: string[],
+    operation: () => Promise<T>,
+    clientName = 'internal-resource-operation',
+  ): Promise<T> {
+    const ordered = [...new Set(resources)].sort();
+    const acquire = (index: number): Promise<T> => {
+      if (index >= ordered.length) return operation();
+      return this.withExclusiveLock(
+        ordered[index],
+        () => acquire(index + 1),
+        clientName,
+      );
+    };
+    return acquire(0);
+  }
+
+  /** Removes a session and every lock owned by it. */
+  unregisterSession(sessionId: string): void {
+    this.sessions.delete(sessionId);
+    for (const [resource, owners] of this.locks) {
+      owners.delete(sessionId);
+      if (owners.size === 0) this.locks.delete(resource);
+    }
+  }
 
   /** Registers one execution context; reuse sessionId only when reconnecting it. */
   registerSession(input: {
@@ -39,7 +120,9 @@ export class CoordinationService {
     const now = new Date();
     const existing = this.sessions.get(sessionId);
     if (existing && existing.clientId !== input.clientId) {
-      throw new ConflictException('Session ID is already registered to another client');
+      throw new ConflictException(
+        'Session ID is already registered to another client',
+      );
     }
     const session: ExecutionSession = {
       sessionId,
@@ -58,7 +141,9 @@ export class CoordinationService {
     this.cleanupExpired();
     const current = this.sessions.get(sessionId);
     if (!current) {
-      throw new NotFoundException('Execution session not found; register this session first');
+      throw new NotFoundException(
+        'Execution session not found; register this session first',
+      );
     }
     const now = new Date().toISOString();
     const session = {
@@ -69,7 +154,8 @@ export class CoordinationService {
     this.sessions.set(sessionId, session);
     for (const [resource, owners] of this.locks) {
       const lock = owners.get(sessionId);
-      if (lock) owners.set(sessionId, { ...lock, expiresAt: session.expiresAt });
+      if (lock)
+        owners.set(sessionId, { ...lock, expiresAt: session.expiresAt });
       if (owners.size === 0) this.locks.delete(resource);
     }
     return session;
@@ -84,7 +170,8 @@ export class CoordinationService {
   }): LockAcquireResult {
     this.cleanupExpired();
     const session = this.requireSession(input.sessionId);
-    const owners = this.locks.get(input.resource) ?? new Map<string, ResourceLock>();
+    const owners =
+      this.locks.get(input.resource) ?? new Map<string, ResourceLock>();
     const own = owners.get(input.sessionId);
     const otherLocks = [...owners.values()].filter(
       (lock) => lock.ownerSessionId !== input.sessionId,
@@ -107,7 +194,8 @@ export class CoordinationService {
     if (own?.mode === 'read' && input.mode === 'write') {
       return {
         acquired: false,
-        reason: 'Release the read lock before requesting an exclusive write lock',
+        reason:
+          'Release the read lock before requesting an exclusive write lock',
         currentOwners: [input.sessionId],
       };
     }
@@ -126,7 +214,10 @@ export class CoordinationService {
   }
 
   /** Releases a lock only when it belongs to the requesting session. */
-  releaseLock(sessionId: string, resource: string): { released: boolean; resource: string } {
+  releaseLock(
+    sessionId: string,
+    resource: string,
+  ): { released: boolean; resource: string } {
     this.cleanupExpired();
     const owners = this.locks.get(resource);
     if (!owners?.has(sessionId)) return { released: false, resource };
@@ -203,7 +294,9 @@ export class CoordinationService {
   private requireSession(sessionId: string): ExecutionSession {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      throw new NotFoundException('Execution session not found; register this session first');
+      throw new NotFoundException(
+        'Execution session not found; register this session first',
+      );
     }
     return session;
   }

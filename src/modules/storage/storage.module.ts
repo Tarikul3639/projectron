@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppConfigModule } from '../../config/config.module.js';
-import { FileStorageService } from './file-storage.service.js';
-import { JsonStorageService } from './json-storage.service.js';
+import { FileStorageService } from './services/file-storage.service.js';
+import { JsonStorageService } from './services/json-storage.service.js';
 
 // Provides filesystem and JSON storage services to application modules.
 @Module({

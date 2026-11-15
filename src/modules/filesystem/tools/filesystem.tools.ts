@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { CoordinationService } from '../../../core/coordination/services/coordination.service.js';
 import { Tool } from '@nestjs/mcp';
 import * as s from '../schemas/filesystem.schemas.js';
 import type * as t from '../types/filesystem.type.js';
@@ -16,7 +17,33 @@ export class FilesystemTools {
     private readonly directories: DirectoryService,
     private readonly edits: FileEditService,
     private readonly transfers: FileTransferService,
+    private readonly coordination: CoordinationService,
   ) {}
+
+  /** Serializes conflicting filesystem mutations without exposing lock tools to clients. */
+  private withPathLock<T>(
+    path: string,
+    rootIndex: number | undefined,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    return this.coordination.withExclusiveLock(
+      'workspace-file:' + (rootIndex ?? 0) + ':' + path,
+      operation,
+      'filesystem-tool',
+    );
+  }
+
+  private withPathLocks<T>(
+    paths: string[],
+    rootIndex: number | undefined,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    return this.coordination.withExclusiveLocks(
+      paths.map((path) => 'workspace-file:' + (rootIndex ?? 0) + ':' + path),
+      operation,
+      'filesystem-tool-batch',
+    );
+  }
 
   /** Lists direct children of the selected workspace directory with file and directory metadata. */
   @Tool({
@@ -81,8 +108,10 @@ export class FilesystemTools {
     },
   })
   async write(input: t.WriteFileInput) {
-    await this.files.write(input);
-    return { success: true, path: input.path };
+    return this.withPathLock(input.path, input.rootIndex, async () => {
+      await this.files.write(input);
+      return { success: true, path: input.path };
+    });
   }
 
   /** Writes a batch of workspace files and returns an individual success or failure result for each requested path. */
@@ -98,7 +127,11 @@ export class FilesystemTools {
     },
   })
   writeMultiple(input: t.WriteMultipleFilesInput) {
-    return this.files.writeMultiple(input);
+    return this.withPathLocks(
+      input.items.map((item) => item.path),
+      input.rootIndex,
+      () => this.files.writeMultiple(input),
+    );
   }
 
   /** Appends UTF-8 content to a file. */
@@ -115,8 +148,10 @@ export class FilesystemTools {
     },
   })
   async append(input: t.AppendFileInput) {
-    await this.files.append(input);
-    return { success: true, path: input.path };
+    return this.withPathLock(input.path, input.rootIndex, async () => {
+      await this.files.append(input);
+      return { success: true, path: input.path };
+    });
   }
 
   /** Replaces exactly one occurrence of text in an existing file. */
@@ -133,7 +168,9 @@ export class FilesystemTools {
     },
   })
   edit(input: t.EditFileInput) {
-    return this.edits.edit(input);
+    return this.withPathLock(input.path, input.rootIndex, () =>
+      this.edits.edit(input),
+    );
   }
 
   /** Reads an inclusive, one-based range of lines from the selected workspace file. */
@@ -196,8 +233,10 @@ export class FilesystemTools {
     },
   })
   async createDirectory(input: t.CreateDirectoryInput) {
-    await this.directories.createDirectory(input);
-    return { success: true, path: input.path };
+    return this.withPathLock(input.path, input.rootIndex, async () => {
+      await this.directories.createDirectory(input);
+      return { success: true, path: input.path };
+    });
   }
 
   /** Moves the selected file or symbolic link to the operating-system Trash after validating its workspace location. */
@@ -212,8 +251,10 @@ export class FilesystemTools {
     },
   })
   async delete(input: t.DeleteFileInput) {
-    await this.files.delete(input);
-    return { success: true, path: input.path };
+    return this.withPathLock(input.path, input.rootIndex, async () => {
+      await this.files.delete(input);
+      return { success: true, path: input.path };
+    });
   }
 
   /** Moves the selected directory and its contents to the operating-system Trash after path validation. */
@@ -228,8 +269,10 @@ export class FilesystemTools {
     },
   })
   async deleteDirectory(input: t.DeleteDirectoryInput) {
-    await this.directories.deleteDirectory(input);
-    return { success: true, path: input.path };
+    return this.withPathLock(input.path, input.rootIndex, async () => {
+      await this.directories.deleteDirectory(input);
+      return { success: true, path: input.path };
+    });
   }
 
   /** Renames a directory within its allowed root and refuses to replace an existing destination. */
@@ -245,8 +288,14 @@ export class FilesystemTools {
     },
   })
   async renameDirectory(input: t.RenamePathInput) {
-    await this.directories.renameDirectory(input);
-    return { success: true, from: input.path, to: input.newPath };
+    return this.withPathLocks(
+      [input.path, input.newPath],
+      input.rootIndex,
+      async () => {
+        await this.directories.renameDirectory(input);
+        return { success: true, from: input.path, to: input.newPath };
+      },
+    );
   }
 
   /** Copies a regular file to the requested workspace destination without overwriting an existing file. */
@@ -262,8 +311,14 @@ export class FilesystemTools {
     },
   })
   async copyFile(input: t.PathPairInput) {
-    await this.transfers.copyFile(input);
-    return { success: true, from: input.path, to: input.destination };
+    return this.withPathLocks(
+      [input.path, input.destination],
+      input.rootIndex,
+      async () => {
+        await this.transfers.copyFile(input);
+        return { success: true, from: input.path, to: input.destination };
+      },
+    );
   }
 
   /** Renames a file or symbolic link through the safe move operation without replacing the destination. */
@@ -279,12 +334,18 @@ export class FilesystemTools {
     },
   })
   async renameFile(input: t.RenamePathInput) {
-    await this.transfers.moveFile({
-      path: input.path,
-      destination: input.newPath,
-      rootIndex: input.rootIndex,
-    });
-    return { success: true, from: input.path, to: input.newPath };
+    return this.withPathLocks(
+      [input.path, input.newPath],
+      input.rootIndex,
+      async () => {
+        await this.transfers.moveFile({
+          path: input.path,
+          destination: input.newPath,
+          rootIndex: input.rootIndex,
+        });
+        return { success: true, from: input.path, to: input.newPath };
+      },
+    );
   }
 
   /** Copies a directory tree to the requested destination while preserving the transfer service's symlink protections. */
@@ -299,8 +360,14 @@ export class FilesystemTools {
     },
   })
   async copyDirectory(input: t.PathPairInput) {
-    await this.transfers.copyDirectory(input);
-    return { success: true, from: input.path, to: input.destination };
+    return this.withPathLocks(
+      [input.path, input.destination],
+      input.rootIndex,
+      async () => {
+        await this.transfers.copyDirectory(input);
+        return { success: true, from: input.path, to: input.destination };
+      },
+    );
   }
 
   /** Moves a file or symbolic link to the requested workspace destination without replacing an existing target. */
@@ -316,8 +383,14 @@ export class FilesystemTools {
     },
   })
   async moveFile(input: t.PathPairInput) {
-    await this.transfers.moveFile(input);
-    return { success: true, from: input.path, to: input.destination };
+    return this.withPathLocks(
+      [input.path, input.destination],
+      input.rootIndex,
+      async () => {
+        await this.transfers.moveFile(input);
+        return { success: true, from: input.path, to: input.destination };
+      },
+    );
   }
 
   /** Moves a directory tree to the requested destination while enforcing the transfer service's path and symlink checks. */
@@ -333,8 +406,14 @@ export class FilesystemTools {
     },
   })
   async moveDirectory(input: t.PathPairInput) {
-    await this.transfers.moveDirectory(input);
-    return { success: true, from: input.path, to: input.destination };
+    return this.withPathLocks(
+      [input.path, input.destination],
+      input.rootIndex,
+      async () => {
+        await this.transfers.moveDirectory(input);
+        return { success: true, from: input.path, to: input.destination };
+      },
+    );
   }
 
   /** Moves the requested mix of files, symbolic links, and directories to Trash and reports each path's outcome. */
@@ -349,7 +428,9 @@ export class FilesystemTools {
     },
   })
   deleteMultiple(input: t.DeleteMultipleInput) {
-    return this.directories.deleteMultiple(input);
+    return this.withPathLocks(input.paths, input.rootIndex, () =>
+      this.directories.deleteMultiple(input),
+    );
   }
 
   /** Copies the requested batch of files and directories and returns an outcome for each source/destination pair. */
@@ -364,7 +445,11 @@ export class FilesystemTools {
     },
   })
   copyMultiple(input: t.BulkPathPairsInput) {
-    return this.transfers.copyMultiple(input);
+    return this.withPathLocks(
+      input.items.flatMap((item) => [item.path, item.destination]),
+      input.rootIndex,
+      () => this.transfers.copyMultiple(input),
+    );
   }
 
   /** Moves the requested batch of files and directories and returns an outcome for each source/destination pair. */
@@ -379,7 +464,11 @@ export class FilesystemTools {
     },
   })
   moveMultiple(input: t.BulkPathPairsInput) {
-    return this.transfers.moveMultiple(input);
+    return this.withPathLocks(
+      input.items.flatMap((item) => [item.path, item.destination]),
+      input.rootIndex,
+      () => this.transfers.moveMultiple(input),
+    );
   }
 
   /** Creates a batch of directories. */
@@ -395,7 +484,9 @@ export class FilesystemTools {
     },
   })
   createMultipleDirectories(input: t.CreateMultipleDirectoriesInput) {
-    return this.directories.createMultipleDirectories(input);
+    return this.withPathLocks(input.paths, input.rootIndex, () =>
+      this.directories.createMultipleDirectories(input),
+    );
   }
 
   /** Reads a bounded binary-safe segment from the requested byte offset and returns the bytes as base64. */
@@ -426,7 +517,9 @@ export class FilesystemTools {
     },
   })
   beginUpload(input: t.BeginFileUploadInput) {
-    return this.transfers.beginFileUpload(input);
+    return this.withPathLock(input.path, input.rootIndex, () =>
+      this.transfers.beginFileUpload(input),
+    );
   }
 
   /** Appends the next sequential base64 chunk to an active staged upload and returns updated transfer progress. */
@@ -441,7 +534,9 @@ export class FilesystemTools {
     },
   })
   writeChunk(input: t.WriteFileChunkInput) {
-    return this.transfers.writeFileChunk(input);
+    return this.withPathLock('upload:' + input.transferId, undefined, () =>
+      this.transfers.writeFileChunk(input),
+    );
   }
 
   /** Verifies and publishes a staged upload. */
@@ -458,7 +553,9 @@ export class FilesystemTools {
     },
   })
   finishUpload(input: t.FinishFileUploadInput) {
-    return this.transfers.finishFileUpload(input);
+    return this.withPathLock('upload:' + input.transferId, undefined, () =>
+      this.transfers.finishFileUpload(input),
+    );
   }
 
   /** Returns staged upload progress. */
@@ -491,6 +588,8 @@ export class FilesystemTools {
     },
   })
   abortUpload(input: t.FileUploadIdInput) {
-    return this.transfers.abortFileUpload(input.transferId);
+    return this.withPathLock('upload:' + input.transferId, undefined, () =>
+      this.transfers.abortFileUpload(input.transferId),
+    );
   }
 }

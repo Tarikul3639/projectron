@@ -3,26 +3,31 @@ import { LogRedactionService } from './log-redaction.service.js';
 
 describe('LogRedactionService', () => {
   const service = new LogRedactionService();
-  it('redacts sensitive keys but preserves the rest of the payload', () => {
-    const value = {
-      password: 'secret-value',
-      nested: { message: 'keep this full text' },
-    };
-    expect(service.sanitize(value)).toEqual({
+
+  it('redacts credentials and preserves ordinary values', () => {
+    expect(
+      service.sanitize({
+        password: 'secret-value',
+        nested: { message: 'keep this text' },
+      }),
+    ).toEqual({
       password: '[REDACTED]',
-      nested: { message: 'keep this full text' },
+      nested: { message: 'keep this text' },
     });
   });
-  it('redacts bearer and provider keys embedded in text', () => {
-    expect(
-      service.sanitize('Bearer abc.def token sk-12345678901234567890'),
-    ).toBe('Bearer [REDACTED] token [REDACTED]');
+
+  it('redacts bearer tokens and bounds large strings', () => {
+    expect(service.sanitize('Bearer abc.def')).toBe('Bearer [REDACTED]');
+    expect(String(service.sanitize('x'.repeat(20_000))).length).toBeLessThan(
+      8_300,
+    );
   });
-  it('handles circular values and buffers', () => {
+
+  it('omits binary data and handles circular values', () => {
     const value: Record<string, unknown> = { data: Buffer.from('hello') };
     value.self = value;
-    expect(service.sanitize(value)).toMatchObject({
-      data: { type: 'Buffer', base64: 'aGVsbG8=' },
+    expect(service.sanitize(value)).toEqual({
+      data: '[BINARY OMITTED]',
       self: '[CIRCULAR]',
     });
   });

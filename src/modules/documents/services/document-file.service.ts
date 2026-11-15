@@ -13,6 +13,7 @@ import {
 } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
+import { CoordinationService } from '../../../core/coordination/services/coordination.service.js';
 import type {
   DocumentCreateInput,
   DocumentInspectInput,
@@ -31,7 +32,10 @@ const MAX_DOCUMENT_BYTES = 1_000_000;
 @Injectable()
 export class DocumentFileService {
   /** Injects application configuration to resolve and enforce the allowed document workspace roots. */
-  constructor(private readonly config: AppConfigService) {}
+  constructor(
+    private readonly config: AppConfigService,
+    private readonly coordination: CoordinationService,
+  ) {}
 
   /** Creates configured workspace roots before document operations begin. */
   async onModuleInit(): Promise<void> {
@@ -108,10 +112,15 @@ export class DocumentFileService {
         'Document content exceeds the 1 MB write limit',
       );
     }
-    await writeFile(path, input.content, {
-      encoding: 'utf8',
-      flag: existing ? 'w' : 'wx',
-    });
+    await this.coordination.withExclusiveLock(
+      'workspace-file:' + (input.rootIndex ?? 0) + ':' + input.path,
+      () =>
+        writeFile(path, input.content, {
+          encoding: 'utf8',
+          flag: existing ? 'w' : 'wx',
+        }).then(() => undefined),
+      'document-create',
+    );
     return {
       path: input.path,
       format,
@@ -173,7 +182,14 @@ export class DocumentFileService {
         'Document already exists; set overwrite=true to replace it',
       );
     }
-    await writeFile(path, content, { flag: existing ? 'w' : 'wx' });
+    await this.coordination.withExclusiveLock(
+      'workspace-file:' + rootIndex + ':' + value,
+      () =>
+        writeFile(path, content, { flag: existing ? 'w' : 'wx' }).then(
+          () => undefined,
+        ),
+      'document-binary-write',
+    );
     return {
       path: value,
       bytes: content.byteLength,

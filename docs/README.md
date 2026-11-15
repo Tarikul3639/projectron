@@ -11,14 +11,13 @@ Use this page to find the guide for the task you are working on.
 ## Capabilities
 
 - [MCP Tools Reference](tools.md) — module overview, tool groups, execution behavior, and safety boundaries.
-- [Browser Automation](browser-automation.md) — Chromium sessions, page interaction, screenshots, viewport/device emulation, downloads, PDFs, and tracing.
-- [Client Solution Overview Presentation](Projectron_Client_Solution_Overview.pptx) — 13-slide PowerPoint deck for business and client discussions.
-- [Office and Document Support](document-support.md) — text formats, DOCX, XLSX, PPTX, PDF, examples, conversion support, and limits.
-- [Orchestration](orchestration.md) — plan creation, AI-assisted planning, step execution, retry, and cancellation.
+- [Browser Automation](browser-automation.md) — Chromium sessions, page interaction, screenshots, downloads, PDFs, and tracing.
+- [Client Solution Overview Presentation](Projectron_Client_Solution_Overview.pptx) — business and client discussions.
+- [Office and Document Support](document-support.md) — text formats, DOCX, XLSX, PPTX, PDF, conversions, and limits.
 
 ## Engineering and operations
 
 - [Architecture](architecture.md) — application modules, request flow, transports, persistence, and trust boundaries.
-- [Logging and Error Reporting](logging-and-errors.md) — operation lifecycle logs, error propagation, sensitive data, and filesystem-root troubleshooting.
+- [Logging and Error Reporting](logging-and-errors.md) — compact MCP tool input/output records and privacy limits.
 
-The repository's [README](../README.md) provides the project overview and quick-start instructions. The registered MCP tool list exposed by a running server can be checked with `orchestration_list_tools`; runtime discovery is the source of truth if this reference and the connected server differ.
+The repository's [README](../README.md) provides the project overview and quick-start instructions.

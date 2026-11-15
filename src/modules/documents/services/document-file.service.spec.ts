@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BadRequestException } from '@nestjs/common';
 import { DocumentFileService } from './document-file.service.js';
+import { CoordinationService } from '../../../core/coordination/services/coordination.service.js';
 
 describe('DocumentFileService', () => {
   let root: string;
@@ -11,9 +12,12 @@ describe('DocumentFileService', () => {
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'projectron-documents-'));
-    service = new DocumentFileService({
-      filesystemAllowedRoots: root,
-    } as never);
+    service = new DocumentFileService(
+      {
+        filesystemAllowedRoots: root,
+      } as never,
+      new CoordinationService(),
+    );
     await service.onModuleInit();
   });
 

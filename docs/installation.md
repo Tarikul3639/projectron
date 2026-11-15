@@ -22,8 +22,6 @@ cp .env.example .env
 
 Review the values in `.env`. In particular, set the host, port, and filesystem allowed roots for your environment.
 
-For AI-generated plans, configure `AI_API_KEY`. The provider URL and model can be changed with `AI_BASE_URL` and `AI_MODEL`.
-
 ## Start the HTTP server
 
 Development:
@@ -56,7 +54,7 @@ pnpm build
 pnpm start:mcp:stdio
 ```
 
-Configure the MCP client to launch this command as a local process. STDIO is the protocol channel: do not write application logs or other text to stdout. Projectron uses `McpStdioLogger` for this entry point.
+Configure the MCP client to launch this command as a local process. STDIO is the protocol channel: do not write application logs or other text to stdout.
 
 ## Quality checks
 
@@ -73,4 +71,4 @@ pnpm build
 - Keep real credentials in `.env`; never commit them.
 - `FILESYSTEM_ALLOWED_ROOTS` defines the roots that filesystem and related file operations may access.
 - Browser automation requires a working Playwright Chromium installation.
-- AI planning is unavailable when `AI_API_KEY` is not configured; the rest of the application can still run.
+- Activity Logging stores compact MCP tool input/output records, with payload limits and a 500-record retention cap.

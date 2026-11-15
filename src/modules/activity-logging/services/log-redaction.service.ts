@@ -4,64 +4,66 @@ const SECRET_KEY =
   /(authorization|cookie|password|passwd|secret|token|api[-_]?key|access[-_]?key|private[-_]?key|credential)/i;
 const SECRET_VALUE =
   /(Bearer\s+)[A-Za-z0-9._~+/-]+=*|((?:sk|rk|pk)-[A-Za-z0-9_-]{12,})/g;
+const MAX_STRING = 8_192;
+const MAX_ITEMS = 50;
+const MAX_DEPTH = 8;
 
-/** Redacts credentials while preserving the complete non-sensitive payload. */
 @Injectable()
 export class LogRedactionService {
-  /** Recursively removes credential-like values before data is persisted or displayed. */
   sanitize(value: unknown): unknown {
-    return this.visit(value, new WeakSet<object>());
+    return this.visit(value, new WeakSet<object>(), 0);
   }
 
-  /** Normalizes nested values, masks secret keys/tokens, and safely marks circular references. */
-  private visit(value: unknown, seen: WeakSet<object>): unknown {
+  sanitizeError(error: unknown): { name: string; message: string } {
+    const value =
+      error instanceof Error
+        ? { name: error.name, message: error.message }
+        : { name: 'UnknownError', message: String(error) };
+    return this.sanitize(value) as { name: string; message: string };
+  }
+
+  private visit(value: unknown, seen: WeakSet<object>, depth: number): unknown {
     if (typeof value === 'string') {
-      return value.replace(
+      const redacted = value.replace(
         SECRET_VALUE,
         (_match, bearer: string | undefined) =>
-          bearer ? `${bearer}[REDACTED]` : '[REDACTED]',
+          bearer ? bearer + '[REDACTED]' : '[REDACTED]',
       );
+      return redacted.length > MAX_STRING
+        ? redacted.slice(0, MAX_STRING) + '[TRUNCATED]'
+        : redacted;
     }
-    if (
-      value === null ||
-      typeof value === 'number' ||
-      typeof value === 'boolean' ||
-      typeof value === 'undefined'
-    )
+    if (value === null || ['number', 'boolean'].includes(typeof value))
       return value;
+    if (typeof value === 'undefined') return null;
     if (typeof value === 'bigint') return value.toString();
     if (typeof value === 'function' || typeof value === 'symbol')
-      return String(value);
+      return '[OMITTED]';
     if (value instanceof Date) return value.toISOString();
-    if (value instanceof Error) {
-      return {
-        name: value.name,
-        message: this.visit(value.message, seen),
-        ...(value.stack ? { stack: value.stack } : {}),
-      };
-    }
-    if (Buffer.isBuffer(value))
-      return { type: 'Buffer', base64: value.toString('base64') };
+    if (value instanceof Error) return this.sanitizeError(value);
+    if (Buffer.isBuffer(value)) return '[BINARY OMITTED]';
+    if (depth >= MAX_DEPTH) return '[MAX DEPTH]';
     if (seen.has(value as object)) return '[CIRCULAR]';
+
     seen.add(value as object);
     if (Array.isArray(value)) {
-      const result = value.map((item) => this.visit(item, seen));
+      const result = value
+        .slice(0, MAX_ITEMS)
+        .map((item) => this.visit(item, seen, depth + 1));
+      if (value.length > MAX_ITEMS) result.push('[ITEMS TRUNCATED]');
       seen.delete(value);
       return result;
     }
-    if (typeof value === 'object') {
-      const result: Record<string, unknown> = {};
-      for (const [key, item] of Object.entries(
-        value as Record<string, unknown>,
-      )) {
-        result[key] = SECRET_KEY.test(key)
-          ? '[REDACTED]'
-          : this.visit(item, seen);
-      }
-      seen.delete(value as object);
-      return result;
+
+    const result: Record<string, unknown> = {};
+    const entries = Object.entries(value as Record<string, unknown>);
+    for (const [key, item] of entries.slice(0, MAX_ITEMS)) {
+      result[key] = SECRET_KEY.test(key)
+        ? '[REDACTED]'
+        : this.visit(item, seen, depth + 1);
     }
+    if (entries.length > MAX_ITEMS) result.__truncated = true;
     seen.delete(value as object);
-    return JSON.stringify(value) ?? '[UNSERIALIZABLE]';
+    return result;
   }
 }

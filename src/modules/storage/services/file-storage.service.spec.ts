@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FileStorageService } from './file-storage.service.js';
+import { CoordinationService } from '../../../core/coordination/services/coordination.service.js';
 
 describe('FileStorageService', () => {
   let root: string;
@@ -10,7 +11,10 @@ describe('FileStorageService', () => {
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'projectron-storage-'));
-    service = new FileStorageService({ storagePath: root } as never);
+    service = new FileStorageService(
+      { storagePath: root } as never,
+      new CoordinationService(),
+    );
   });
 
   afterEach(async () => {

@@ -4,7 +4,7 @@ import { Tool } from '@nestjs/mcp';
 import { connectMcpClient } from '@nestjs/mcp/testing';
 import * as z from 'zod';
 import { describe, expect, it } from 'vitest';
-import { FileStorageService } from '../../storage/file-storage.service.js';
+import { FileStorageService } from '../../storage/services/file-storage.service.js';
 import { McpModule } from '../../mcp/mcp.module.js';
 import { ActivityLoggingModule } from '../activity-logging.module.js';
 import { ActivityLoggingService } from '../services/activity-logging.service.js';
@@ -21,7 +21,7 @@ class LoggedEchoTools {
 }
 
 describe('ActivityLoggingInterceptor MCP integration', () => {
-  it('captures real MCP tool arguments and returned output', async () => {
+  it('stores exactly one record with MCP tool input and output', async () => {
     const files = new Map<string, string>();
     const storage = {
       createDirectory: async () => undefined,
@@ -57,12 +57,14 @@ describe('ActivityLoggingInterceptor MCP integration', () => {
           arguments: { value: 'mcp-payload-is-captured' },
         });
         expect(JSON.stringify(result)).toContain('mcp-payload-is-captured');
-        const logs = await app
-          .get(ActivityLoggingService)
-          .getRecentTechnicalLogs();
+        const logs = await app.get(ActivityLoggingService).getRecent();
         expect(logs).toHaveLength(1);
-        expect(JSON.stringify(logs[0])).toContain('mcp-payload-is-captured');
-        expect(logs[0]).toMatchObject({ status: 'success' });
+        expect(logs[0]).toMatchObject({
+          tool: 'activity_log_test_echo',
+          input: { value: 'mcp-payload-is-captured' },
+          output: { echoed: 'mcp-payload-is-captured' },
+          status: 'success',
+        });
       } finally {
         await client.close();
       }

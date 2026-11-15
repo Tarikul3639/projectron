@@ -9,7 +9,7 @@ import { access, mkdir, realpath } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { delimiter, isAbsolute, relative, resolve, sep } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
-import { JsonStorageService } from '../../storage/json-storage.service.js';
+import { JsonStorageService } from '../../storage/services/json-storage.service.js';
 import type {
   ProjectRecord,
   ProjectStore,

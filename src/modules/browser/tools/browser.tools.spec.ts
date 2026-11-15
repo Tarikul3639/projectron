@@ -53,6 +53,7 @@ describe('BrowserTools', () => {
       {} as unknown as BrowserPageService,
       {} as unknown as BrowserArtifactService,
       {} as unknown as BrowserDownloadService,
+      {} as never,
     );
 
     expect(tools.capabilities()).toEqual({ features: ['navigation'] });

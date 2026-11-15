@@ -8,7 +8,8 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
-import { AppConfigService } from '../../config/config.service.js';
+import { AppConfigService } from '../../../config/config.service.js';
+import { CoordinationService } from '../../../core/coordination/services/coordination.service.js';
 
 /** Provides bounded, root-confined file operations for application storage. */
 @Injectable()
@@ -16,7 +17,10 @@ export class FileStorageService {
   private readonly rootPath: string;
 
   /** Resolves the dedicated storage directory from application configuration. */
-  constructor(config: AppConfigService) {
+  constructor(
+    config: AppConfigService,
+    private readonly coordination: CoordinationService,
+  ) {
     this.rootPath = resolve(config.storagePath);
   }
 
@@ -28,20 +32,37 @@ export class FileStorageService {
   /** Writes UTF-8 content to a storage file, creating parent directories when necessary. */
   async write(path: string, content: string): Promise<void> {
     const filePath = this.resolvePath(path);
-    await mkdir(dirname(filePath), { recursive: true });
-    await writeFile(filePath, content, 'utf8');
+    await this.coordination.withExclusiveLock(
+      'storage:' + filePath,
+      async () => {
+        await mkdir(dirname(filePath), { recursive: true });
+        await writeFile(filePath, content, 'utf8');
+      },
+      'file-storage-write',
+    );
   }
 
   /** Appends UTF-8 content to a storage file without replacing earlier records, creating parent directories as needed. */
   async append(path: string, content: string): Promise<void> {
     const filePath = this.resolvePath(path);
-    await mkdir(dirname(filePath), { recursive: true });
-    await appendFile(filePath, content, 'utf8');
+    await this.coordination.withExclusiveLock(
+      'storage:' + filePath,
+      async () => {
+        await mkdir(dirname(filePath), { recursive: true });
+        await appendFile(filePath, content, 'utf8');
+      },
+      'file-storage-append',
+    );
   }
 
   /** Removes the selected storage file without failing when it is already absent. */
   async delete(path: string): Promise<void> {
-    await rm(this.resolvePath(path), { force: true });
+    const filePath = this.resolvePath(path);
+    await this.coordination.withExclusiveLock(
+      'storage:' + filePath,
+      () => rm(filePath, { force: true }),
+      'file-storage-delete',
+    );
   }
 
   /** Checks whether the resolved storage path currently identifies a regular file. */
@@ -55,7 +76,12 @@ export class FileStorageService {
 
   /** Creates the requested storage directory and any missing parent directories. */
   async createDirectory(path: string): Promise<void> {
-    await mkdir(this.resolvePath(path), { recursive: true });
+    const directory = this.resolvePath(path);
+    await this.coordination.withExclusiveLock(
+      'storage-directory:' + directory,
+      () => mkdir(directory, { recursive: true }).then(() => undefined),
+      'file-storage-directory',
+    );
   }
 
   /** Resolves a non-empty relative path and rejects traversal outside the configured storage root. */

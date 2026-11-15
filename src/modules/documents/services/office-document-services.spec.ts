@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DocumentFileService } from './document-file.service.js';
+import { CoordinationService } from '../../../core/coordination/services/coordination.service.js';
 import { WordDocumentService } from './word-document.service.js';
 import { SpreadsheetDocumentService } from './spreadsheet-document.service.js';
 import { PresentationDocumentService } from './presentation-document.service.js';
@@ -16,9 +17,12 @@ describe('Office document services', () => {
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'projectron-office-'));
-    files = new DocumentFileService({
-      filesystemAllowedRoots: root,
-    } as never);
+    files = new DocumentFileService(
+      {
+        filesystemAllowedRoots: root,
+      } as never,
+      new CoordinationService(),
+    );
     await files.onModuleInit();
   });
 
@@ -152,6 +156,8 @@ describe('Office document services', () => {
           name: 'Data',
           headers: ['Name', 'Value'],
           rows: [['Alpha', 10]],
+          freezeHeader: false,
+          autoFilter: false,
         },
       ],
       overwrite: false,

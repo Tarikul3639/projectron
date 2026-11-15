@@ -108,7 +108,7 @@ export class TerminalService {
       input.workingDirectory,
     );
     this.logger.log(
-      `Executing command: ${executable} (cwd: ${workingDirectory})`,
+      `\x1B[1;36mCOMMAND\x1B[0m \x1B[1;33m${executable}\x1B[0m (cwd: ${workingDirectory})`,
     );
     return this.spawnCommand(
       executable,

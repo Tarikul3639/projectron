@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { CoordinationService } from '../../../core/coordination/services/coordination.service.js';
 import { Tool } from '@nestjs/mcp';
 import * as z from 'zod';
 import { BrowserContextService } from '../services/browser-context.service.js';
@@ -19,7 +20,32 @@ export class BrowserTools {
     private readonly pages: BrowserPageService,
     private readonly artifacts: BrowserArtifactService,
     private readonly downloads: BrowserDownloadService,
+    private readonly coordination: CoordinationService,
   ) {}
+
+  /** Serializes state-changing operations targeting the same browser tab or context. */
+  private withPageLock<T>(
+    pageId: string | undefined,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const page = this.sessions.getPage(pageId);
+    return this.coordination.withExclusiveLock(
+      'browser-page:' + page.id,
+      operation,
+      'browser-page-tool',
+    );
+  }
+
+  private withSessionLock<T>(
+    sessionId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    return this.coordination.withExclusiveLock(
+      'browser-session:' + sessionId,
+      operation,
+      'browser-session-tool',
+    );
+  }
 
   /** Returns the browser automation capabilities and safety restrictions. */
   @Tool({
@@ -55,7 +81,11 @@ export class BrowserTools {
     },
   })
   launch(input: { headless?: boolean; slowMo?: number; timeoutMs?: number }) {
-    return this.sessions.launch(input);
+    return this.coordination.withExclusiveLock(
+      'browser-engine',
+      () => this.sessions.launch(input),
+      'browser-engine',
+    );
   }
 
   /** Closes browser sessions and releases their resources. */
@@ -70,7 +100,11 @@ export class BrowserTools {
     },
   })
   close() {
-    return this.sessions.close();
+    return this.coordination.withExclusiveLock(
+      'browser-engine',
+      () => this.sessions.close(),
+      'browser-engine',
+    );
   }
 
   /** Lists active browser sessions and their open pages. */
@@ -105,8 +139,14 @@ export class BrowserTools {
     },
   })
   async newContext() {
-    const session = await this.sessions.createSession();
-    return { sessionId: session.id, createdAt: session.createdAt };
+    return this.coordination.withExclusiveLock(
+      'browser-engine',
+      async () => {
+        const session = await this.sessions.createSession();
+        return { sessionId: session.id, createdAt: session.createdAt };
+      },
+      'browser-context-create',
+    );
   }
 
   /** Opens a new page in the selected browser context. */
@@ -121,8 +161,11 @@ export class BrowserTools {
     },
   })
   async newPage(input: { sessionId?: string }) {
-    const page = await this.sessions.createPage(input.sessionId);
-    return { pageId: page.id, sessionId: page.sessionId };
+    const sessionId = input.sessionId ?? this.sessions.getPage().sessionId;
+    return this.withSessionLock(sessionId, async () => {
+      const page = await this.sessions.createPage(sessionId);
+      return { pageId: page.id, sessionId: page.sessionId };
+    });
   }
 
   /** Closes page and releases its resources. */
@@ -137,7 +180,9 @@ export class BrowserTools {
     },
   })
   closePage(input: { pageId?: string }) {
-    return this.sessions.closePage(input.pageId);
+    return this.withPageLock(input.pageId, () =>
+      this.sessions.closePage(input.pageId),
+    );
   }
 
   /** Closes session and releases its resources. */
@@ -152,7 +197,9 @@ export class BrowserTools {
     },
   })
   closeSession(input: { sessionId: string }) {
-    return this.sessions.closeSession(input.sessionId);
+    return this.withSessionLock(input.sessionId, () =>
+      this.sessions.closeSession(input.sessionId),
+    );
   }
 
   /** Navigates the selected tab after validating the destination and its redirects against browser network-safety rules. */
@@ -182,7 +229,7 @@ export class BrowserTools {
     waitUntil?: 'load' | 'domcontentloaded' | 'networkidle' | 'commit';
     timeoutMs?: number;
   }) {
-    return this.pages.navigate(input);
+    return this.withPageLock(input.pageId, () => this.pages.navigate(input));
   }
 
   /** Moves the selected tab one entry backward in its navigation history. */
@@ -197,7 +244,9 @@ export class BrowserTools {
     },
   })
   back(input: { pageId?: string }) {
-    return this.pages.history(input.pageId, 'back');
+    return this.withPageLock(input.pageId, () =>
+      this.pages.history(input.pageId, 'back'),
+    );
   }
 
   /** Moves the selected tab one entry forward when a forward history entry exists. */
@@ -212,7 +261,9 @@ export class BrowserTools {
     },
   })
   forward(input: { pageId?: string }) {
-    return this.pages.history(input.pageId, 'forward');
+    return this.withPageLock(input.pageId, () =>
+      this.pages.history(input.pageId, 'forward'),
+    );
   }
 
   /** Reloads the selected tab and waits for the page service's configured navigation lifecycle. */
@@ -227,7 +278,9 @@ export class BrowserTools {
     },
   })
   reload(input: { pageId?: string }) {
-    return this.pages.reload(input.pageId);
+    return this.withPageLock(input.pageId, () =>
+      this.pages.reload(input.pageId),
+    );
   }
 
   /** Retrieves the current page URL, title, metadata, viewport dimensions, and readiness state. */
@@ -429,7 +482,7 @@ export class BrowserTools {
       'click' | 'dblclick' | 'hover' | 'fill' | 'check' | 'uncheck' | 'focus';
     value?: string;
   }) {
-    return this.pages.interact(input);
+    return this.withPageLock(input.pageId, () => this.pages.interact(input));
   }
 
   /** Selects the supplied option values in the target select element and returns the selection result. */
@@ -450,7 +503,9 @@ export class BrowserTools {
     },
   })
   select(input: { pageId?: string; selector: string; values: string[] }) {
-    return this.pages.interact({ ...input, action: 'select' });
+    return this.withPageLock(input.pageId, () =>
+      this.pages.interact({ ...input, action: 'select' }),
+    );
   }
 
   /** Sends a keyboard key to the selected element, or to the active page when no selector is supplied. */
@@ -472,7 +527,7 @@ export class BrowserTools {
     },
   })
   press(input: { pageId?: string; selector?: string; key: string }) {
-    return this.pages.press(input);
+    return this.withPageLock(input.pageId, () => this.pages.press(input));
   }
 
   /** Scrolls the active page by the requested horizontal and vertical pixel offsets. */
@@ -493,7 +548,7 @@ export class BrowserTools {
     },
   })
   scroll(input: { pageId?: string; deltaX?: number; deltaY?: number }) {
-    return this.pages.scroll(input);
+    return this.withPageLock(input.pageId, () => this.pages.scroll(input));
   }
 
   /** Captures a viewport, full-page, or element screenshot and optionally saves it within an allowed workspace root. */
@@ -547,7 +602,9 @@ export class BrowserTools {
     },
   })
   upload(input: { pageId?: string; selector: string; filePaths: string[] }) {
-    return this.contextData.upload(input);
+    return this.withPageLock(input.pageId, () =>
+      this.contextData.upload(input),
+    );
   }
 
   /** Triggers a download by clicking the requested page element and returns its captured download identifier. */
@@ -568,7 +625,7 @@ export class BrowserTools {
     },
   })
   download(input: { pageId?: string; selector: string }) {
-    return this.downloads.trigger(input);
+    return this.withPageLock(input.pageId, () => this.downloads.trigger(input));
   }
 
   /** Lists download records captured by the current Projectron server process without exposing temporary paths. */
@@ -656,7 +713,9 @@ export class BrowserTools {
     },
   })
   pdf(input: { pageId?: string; path: string }) {
-    return this.artifacts.pdf(input.pageId, input.path);
+    return this.withPageLock(input.pageId, () =>
+      this.artifacts.pdf(input.pageId, input.path),
+    );
   }
 
   /** Starts Playwright tracing for the browser context that owns the selected page, including screenshots, snapshots, and sources. */
@@ -671,7 +730,9 @@ export class BrowserTools {
     },
   })
   traceStart(input: { pageId?: string }) {
-    return this.artifacts.traceStart(input.pageId);
+    return this.withPageLock(input.pageId, () =>
+      this.artifacts.traceStart(input.pageId),
+    );
   }
 
   /** Stops the active context trace and writes its archive to a validated workspace destination. */
@@ -689,7 +750,9 @@ export class BrowserTools {
     },
   })
   traceStop(input: { pageId?: string; path: string }) {
-    return this.artifacts.traceStop(input.pageId, input.path);
+    return this.withPageLock(input.pageId, () =>
+      this.artifacts.traceStop(input.pageId, input.path),
+    );
   }
 
   /** Evaluates JavaScript in the selected page context. */
@@ -710,7 +773,9 @@ export class BrowserTools {
     },
   })
   evaluate(input: { pageId?: string; expression: string }) {
-    return this.contextData.evaluate(input);
+    return this.withPageLock(input.pageId, () =>
+      this.contextData.evaluate(input),
+    );
   }
 
   /** Reads cookies from the selected isolated context and returns them with cookie values redacted. */
@@ -749,7 +814,9 @@ export class BrowserTools {
     pageId?: string;
     cookies: Array<Record<string, unknown>>;
   }) {
-    return this.contextData.setCookies(input);
+    return this.withPageLock(input.pageId, () =>
+      this.contextData.setCookies(input),
+    );
   }
 
   /** Reads localStorage or sessionStorage for the selected page origin, masking values under credential-like keys. */
@@ -797,7 +864,9 @@ export class BrowserTools {
     key: string;
     value: string;
   }) {
-    return this.contextData.writeStorage(input);
+    return this.withPageLock(input.pageId, () =>
+      this.contextData.writeStorage(input),
+    );
   }
 
   /** Clears cookies and both web-storage areas for the isolated context associated with the selected page. */
@@ -817,7 +886,9 @@ export class BrowserTools {
     },
   })
   clearSession(input: { pageId?: string }) {
-    return this.contextData.clearSession(input.pageId);
+    return this.withPageLock(input.pageId, () =>
+      this.contextData.clearSession(input.pageId),
+    );
   }
 
   /** Sets the viewport dimensions for the selected browser page. */
@@ -838,7 +909,9 @@ export class BrowserTools {
     },
   })
   viewport(input: { pageId?: string; width: number; height: number }) {
-    return this.artifacts.viewport(input);
+    return this.withPageLock(input.pageId, () =>
+      this.artifacts.viewport(input),
+    );
   }
 
   /** Applies the predefined desktop, mobile, or tablet viewport dimensions to the selected page. */
@@ -867,8 +940,10 @@ export class BrowserTools {
       tablet: { width: 820, height: 1180 },
     };
     const size = sizes[input.device];
-    await this.sessions.getPage(input.pageId).page.setViewportSize(size);
-    return { device: input.device, ...size };
+    return this.withPageLock(input.pageId, async () => {
+      await this.sessions.getPage(input.pageId).page.setViewportSize(size);
+      return { device: input.device, ...size };
+    });
   }
 
   /** Attaches page diagnostics when needed and returns captured requests, response metadata, and network failures. */
@@ -973,7 +1048,7 @@ export class BrowserTools {
     },
   })
   dragAndDrop(input: { pageId?: string; source: string; target: string }) {
-    return this.pages.dragAndDrop(input);
+    return this.withPageLock(input.pageId, () => this.pages.dragAndDrop(input));
   }
 
   /** Accepts or dismisses the most recent JavaScript dialog and supplies optional prompt text when accepting. */
@@ -999,6 +1074,8 @@ export class BrowserTools {
     action: 'accept' | 'dismiss';
     promptText?: string;
   }) {
-    return this.pages.handleDialog(input);
+    return this.withPageLock(input.pageId, () =>
+      this.pages.handleDialog(input),
+    );
   }
 }

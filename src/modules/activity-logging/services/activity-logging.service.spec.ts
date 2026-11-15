@@ -2,82 +2,81 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { FileStorageService } from '../../storage/file-storage.service.js';
+import { CoordinationService } from '../../../core/coordination/services/coordination.service.js';
+import { FileStorageService } from '../../storage/services/file-storage.service.js';
 import { ActivityLoggingService } from './activity-logging.service.js';
 import { LogRedactionService } from './log-redaction.service.js';
 
 describe('ActivityLoggingService', () => {
   let root: string;
   let service: ActivityLoggingService;
+
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'projectron-activity-'));
     service = new ActivityLoggingService(
-      new FileStorageService({ storagePath: root } as never),
+      new FileStorageService(
+        { storagePath: root } as never,
+        new CoordinationService(),
+      ),
       new LogRedactionService(),
     );
     await service.onModuleInit();
   });
+
   afterEach(async () => rm(root, { recursive: true, force: true }));
 
-  it('persists complete input, output, lifecycle and trace as JSONL events', async () => {
-    const id = await service.startToolExecution({
+  it('stores one compact record containing tool input and output', async () => {
+    const record = await service.recordExecution({
       tool: 'filesystem_read',
       input: { path: 'src/a.ts' },
-    });
-    await service.recordExecutionStep(id, {
-      name: 'Reading file',
-      status: 'completed',
+      output: { content: 'file contents' },
+      status: 'success',
+      timestamp: new Date().toISOString(),
       durationMs: 12,
     });
-    await service.completeToolExecution(id, {
-      content: 'complete file contents',
-    });
-    const records = await service.getRecentTechnicalLogs();
-    expect(records[0]).toMatchObject({
-      id,
-      tool: 'filesystem_read',
-      input: { path: 'src/a.ts' },
-      output: { content: 'complete file contents' },
-      status: 'success',
-      steps: [{ name: 'Reading file', durationMs: 12 }],
-    });
+    expect(await service.getRecent()).toMatchObject([
+      {
+        id: record.id,
+        tool: 'filesystem_read',
+        input: { path: 'src/a.ts' },
+        output: { content: 'file contents' },
+        status: 'success',
+        durationMs: 12,
+      },
+    ]);
     const raw = await readFile(
-      join(root, 'logs/active/execution-records.jsonl'),
+      join(root, 'logs/active/tool-executions.jsonl'),
       'utf8',
     );
-    expect(raw.trim().split('\n')).toHaveLength(3);
+    expect(raw.trim().split('\n')).toHaveLength(1);
   });
 
-  it('redacts credentials and preserves the full ordinary output', async () => {
-    const id = await service.startToolExecution({
+  it('redacts secrets and bounds large payloads', async () => {
+    await service.recordExecution({
       tool: 'example',
-      input: { apiKey: 'private', note: 'x'.repeat(17000) },
+      input: { apiKey: 'private', note: 'x'.repeat(20_000) },
+      output: { result: 'y'.repeat(20_000) },
+      status: 'success',
+      timestamp: new Date().toISOString(),
+      durationMs: 1,
     });
-    await service.completeToolExecution(id, { result: 'y'.repeat(17000) });
-    const [record] = await service.getRecentTechnicalLogs();
+    const [record] = await service.getRecent();
     expect(record.input).toMatchObject({ apiKey: '[REDACTED]' });
-    expect((record.input as { note: string }).note).toHaveLength(17000);
-    expect((record.output as { result: string }).result).toHaveLength(17000);
+    expect(JSON.stringify(record).length).toBeLessThan(65_536);
   });
 
-  it('archives without discarding existing records', async () => {
-    const id = await service.startToolExecution({
-      tool: 'test_tool',
-      input: {},
-    });
-    await service.completeToolExecution(id, { ok: true });
-    const result = await service.archiveActive('test');
-    expect(result.archived).toBe(true);
-    expect(
-      await readFile(join(root, 'logs/active/execution-records.jsonl'), 'utf8'),
-    ).toBe('');
-    expect(
-      (
-        await readFile(
-          join(root, `logs/archive/${result.date}/execution-records.jsonl`),
-          'utf8',
-        )
-      ).length,
-    ).toBeGreaterThan(0);
+  it('keeps only the latest 500 records', async () => {
+    for (let i = 0; i < 505; i++) {
+      await service.recordExecution({
+        tool: 'example',
+        input: { i },
+        output: { ok: true },
+        status: 'success',
+        timestamp: new Date().toISOString(),
+        durationMs: i,
+      });
+    }
+    expect(await service.getRecent(500)).toHaveLength(500);
+    expect((await service.getRecent(1))[0].input).toEqual({ i: 504 });
   });
 });

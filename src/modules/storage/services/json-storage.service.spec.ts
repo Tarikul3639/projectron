@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FileStorageService } from './file-storage.service.js';
 import { JsonStorageService } from './json-storage.service.js';
+import { CoordinationService } from '../../../core/coordination/services/coordination.service.js';
 
 describe('JsonStorageService', () => {
   let root: string;
@@ -11,7 +12,10 @@ describe('JsonStorageService', () => {
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'projectron-json-'));
-    const fileStorage = new FileStorageService({ storagePath: root } as never);
+    const fileStorage = new FileStorageService(
+      { storagePath: root } as never,
+      new CoordinationService(),
+    );
     service = new JsonStorageService(fileStorage);
   });
 
@@ -35,7 +39,10 @@ describe('JsonStorageService', () => {
   });
 
   it('throws when the stored JSON is invalid', async () => {
-    const fileStorage = new FileStorageService({ storagePath: root } as never);
+    const fileStorage = new FileStorageService(
+      { storagePath: root } as never,
+      new CoordinationService(),
+    );
     await fileStorage.write('broken.json', '{invalid');
     await expect(service.read('broken.json')).rejects.toThrow();
   });

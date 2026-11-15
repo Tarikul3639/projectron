@@ -48,6 +48,14 @@ describe('FilesystemTools', () => {
       directories as unknown as DirectoryService,
       edits as unknown as FileEditService,
       transfers as unknown as FileTransferService,
+      {
+        withExclusiveLock: (_key: string, operation: () => Promise<unknown>) =>
+          operation(),
+        withExclusiveLocks: (
+          _keys: string[],
+          operation: () => Promise<unknown>,
+        ) => operation(),
+      } as never,
     );
 
     await tools.read({ path: 'a.txt' });

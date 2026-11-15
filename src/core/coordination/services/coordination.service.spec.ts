@@ -5,18 +5,54 @@ import { CoordinationService } from './coordination.service.js';
 describe('CoordinationService', () => {
   it('allows multiple readers on the same resource across sessions', () => {
     const service = new CoordinationService();
-    const a = service.registerSession({ clientId: 'same-client', clientName: 'Tab A' });
-    const b = service.registerSession({ clientId: 'same-client', clientName: 'Tab B' });
-    expect(service.acquireLock({ sessionId: a.sessionId, resource: 'src/a.ts', mode: 'read' }).acquired).toBe(true);
-    expect(service.acquireLock({ sessionId: b.sessionId, resource: 'src/a.ts', mode: 'read' }).acquired).toBe(true);
+    const a = service.registerSession({
+      clientId: 'same-client',
+      clientName: 'Tab A',
+    });
+    const b = service.registerSession({
+      clientId: 'same-client',
+      clientName: 'Tab B',
+    });
+    expect(
+      service.acquireLock({
+        sessionId: a.sessionId,
+        resource: 'src/a.ts',
+        mode: 'read',
+      }).acquired,
+    ).toBe(true);
+    expect(
+      service.acquireLock({
+        sessionId: b.sessionId,
+        resource: 'src/a.ts',
+        mode: 'read',
+      }).acquired,
+    ).toBe(true);
   });
 
   it('treats two sessions from one client as separate lock owners', () => {
     const service = new CoordinationService();
-    const a = service.registerSession({ clientId: 'chatgpt', clientName: 'ChatGPT Tab 1' });
-    const b = service.registerSession({ clientId: 'chatgpt', clientName: 'ChatGPT Tab 2' });
-    expect(service.acquireLock({ sessionId: a.sessionId, resource: 'shared.ts', mode: 'write' }).acquired).toBe(true);
-    expect(service.acquireLock({ sessionId: b.sessionId, resource: 'shared.ts', mode: 'write' })).toMatchObject({
+    const a = service.registerSession({
+      clientId: 'chatgpt',
+      clientName: 'ChatGPT Tab 1',
+    });
+    const b = service.registerSession({
+      clientId: 'chatgpt',
+      clientName: 'ChatGPT Tab 2',
+    });
+    expect(
+      service.acquireLock({
+        sessionId: a.sessionId,
+        resource: 'shared.ts',
+        mode: 'write',
+      }).acquired,
+    ).toBe(true);
+    expect(
+      service.acquireLock({
+        sessionId: b.sessionId,
+        resource: 'shared.ts',
+        mode: 'write',
+      }),
+    ).toMatchObject({
       acquired: false,
       currentOwners: [a.sessionId],
     });
@@ -26,44 +62,125 @@ describe('CoordinationService', () => {
     const service = new CoordinationService();
     const a = service.registerSession({ clientId: 'a', clientName: 'Agent A' });
     const b = service.registerSession({ clientId: 'b', clientName: 'Agent B' });
-    service.acquireLock({ sessionId: a.sessionId, resource: 'src/a.ts', mode: 'write' });
-    expect(service.acquireLock({ sessionId: b.sessionId, resource: 'src/a.ts', mode: 'read' })).toMatchObject({ acquired: false });
+    service.acquireLock({
+      sessionId: a.sessionId,
+      resource: 'src/a.ts',
+      mode: 'write',
+    });
+    expect(
+      service.acquireLock({
+        sessionId: b.sessionId,
+        resource: 'src/a.ts',
+        mode: 'read',
+      }),
+    ).toMatchObject({ acquired: false });
   });
 
   it('blocks writers while readers hold locks', () => {
     const service = new CoordinationService();
     const a = service.registerSession({ clientId: 'a', clientName: 'Agent A' });
     const b = service.registerSession({ clientId: 'b', clientName: 'Agent B' });
-    service.acquireLock({ sessionId: a.sessionId, resource: 'src/a.ts', mode: 'read' });
-    expect(service.acquireLock({ sessionId: b.sessionId, resource: 'src/a.ts', mode: 'write' })).toMatchObject({ acquired: false });
+    service.acquireLock({
+      sessionId: a.sessionId,
+      resource: 'src/a.ts',
+      mode: 'read',
+    });
+    expect(
+      service.acquireLock({
+        sessionId: b.sessionId,
+        resource: 'src/a.ts',
+        mode: 'write',
+      }),
+    ).toMatchObject({ acquired: false });
   });
 
   it('requires a registered session before locking', () => {
     const service = new CoordinationService();
-    expect(() => service.acquireLock({ sessionId: 'missing', resource: 'x', mode: 'read' })).toThrow(NotFoundException);
+    expect(() =>
+      service.acquireLock({
+        sessionId: 'missing',
+        resource: 'x',
+        mode: 'read',
+      }),
+    ).toThrow(NotFoundException);
   });
 
   it('reconnects one session without replacing a sibling session', () => {
     const service = new CoordinationService();
-    const a = service.registerSession({ clientId: 'same-client', clientName: 'Tab A' });
-    const b = service.registerSession({ clientId: 'same-client', clientName: 'Tab B' });
-    const reconnected = service.registerSession({ clientId: 'same-client', clientName: 'Tab A', sessionId: a.sessionId });
+    const a = service.registerSession({
+      clientId: 'same-client',
+      clientName: 'Tab A',
+    });
+    const b = service.registerSession({
+      clientId: 'same-client',
+      clientName: 'Tab B',
+    });
+    const reconnected = service.registerSession({
+      clientId: 'same-client',
+      clientName: 'Tab A',
+      sessionId: a.sessionId,
+    });
     expect(reconnected.sessionId).toBe(a.sessionId);
     expect(service.listState().sessions).toHaveLength(2);
-    expect(service.listState().sessions.map((session) => session.sessionId)).toContain(b.sessionId);
+    expect(
+      service.listState().sessions.map((session) => session.sessionId),
+    ).toContain(b.sessionId);
   });
 
   it('allows explicit task takeover and rejects implicit takeover between sessions', () => {
     const service = new CoordinationService();
-    const a = service.registerSession({ clientId: 'same-client', clientName: 'Tab A' });
-    const b = service.registerSession({ clientId: 'same-client', clientName: 'Tab B' });
+    const a = service.registerSession({
+      clientId: 'same-client',
+      clientName: 'Tab A',
+    });
+    const b = service.registerSession({
+      clientId: 'same-client',
+      clientName: 'Tab B',
+    });
     service.createTask({
       taskId: 'task-1',
       projectId: 'p1',
       title: 'Implement feature',
       ownerSessionId: a.sessionId,
     });
-    expect(() => service.updateTask({ taskId: 'task-1', sessionId: b.sessionId, status: 'in_progress' })).toThrow(ConflictException);
-    expect(service.updateTask({ taskId: 'task-1', sessionId: b.sessionId, takeover: true }).ownerSessionId).toBe(b.sessionId);
+    expect(() =>
+      service.updateTask({
+        taskId: 'task-1',
+        sessionId: b.sessionId,
+        status: 'in_progress',
+      }),
+    ).toThrow(ConflictException);
+    expect(
+      service.updateTask({
+        taskId: 'task-1',
+        sessionId: b.sessionId,
+        takeover: true,
+      }).ownerSessionId,
+    ).toBe(b.sessionId);
+  });
+
+  it('queues concurrent internal operations for the same resource and releases their sessions', async () => {
+    const service = new CoordinationService();
+    const order: string[] = [];
+    await Promise.all([
+      service.withExclusiveLock('shared-resource', async () => {
+        order.push('first:start');
+        await Promise.resolve();
+        order.push('first:end');
+      }),
+      service.withExclusiveLock('shared-resource', async () => {
+        order.push('second:start');
+        await Promise.resolve();
+        order.push('second:end');
+      }),
+    ]);
+    expect(order).toEqual([
+      'first:start',
+      'first:end',
+      'second:start',
+      'second:end',
+    ]);
+    expect(service.listState().locks).toHaveLength(0);
+    expect(service.listState().sessions).toHaveLength(0);
   });
 });
