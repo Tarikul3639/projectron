@@ -12,7 +12,7 @@ describe('FileStorageService', () => {
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'projectron-storage-'));
     service = new FileStorageService(
-      { storagePath: root } as never,
+      { databasePath: root } as never,
       new CoordinationService(),
     );
   });

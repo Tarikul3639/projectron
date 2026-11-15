@@ -37,7 +37,7 @@ lerna-debug.log*
 !.env.example
 
 # Local runtime data (logs, processes, projects, sessions)
-/storage/
+/database/
 
 # temp directory
 .temp

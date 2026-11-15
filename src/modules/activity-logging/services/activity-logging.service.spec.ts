@@ -15,7 +15,7 @@ describe('ActivityLoggingService', () => {
     root = await mkdtemp(join(tmpdir(), 'projectron-activity-'));
     service = new ActivityLoggingService(
       new FileStorageService(
-        { storagePath: root } as never,
+        { databasePath: root } as never,
         new CoordinationService(),
       ),
       new LogRedactionService(),

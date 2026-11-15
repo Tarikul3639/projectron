@@ -62,7 +62,7 @@ Each feature module owns its services, validation schemas, and MCP tool provider
 
 ## Persistence
 
-Application data is stored locally under `storage/`. The Storage module wraps filesystem operations and JSON serialization. Feature services own their persisted data.
+Application data is stored locally under `database/` as JSON and JSONL files. The shared persistence services wrap filesystem operations and JSON serialization; feature services own their persisted data.
 
 ## Safety boundaries
 

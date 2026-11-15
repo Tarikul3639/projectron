@@ -24,7 +24,7 @@ Projectron is a local **Model Context Protocol (MCP) server** built with **NestJ
 - **Project workspaces:** Register, import, inspect, archive, restore, and discover project directories.
 - **System and network tools:** Host diagnostics, DNS, public connectivity, and bounded HTTP requests.
 - **Activity logging:** Store compact MCP tool input/output records with redaction and bounded retention.
-- **Local storage:** Persist application data in local files without requiring a database.
+- **Local database:** Persist application data in local files without requiring an external database server; JSON and JSONL files are stored under `database/`.
 
 ## Requirements
 

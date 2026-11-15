@@ -26,6 +26,6 @@ FILESYSTEM_ALLOWED_ROOTS=./workspace
 LOG_LEVEL=debug
 ```
 
-## Storage location
+## Database location
 
-Projectron currently uses `./storage` for persisted application data. This path is defined by `AppConfigService.storagePath`; it is not currently an environment variable.
+Projectron currently uses `./database` for persisted application data. This path is defined by `AppConfigService.databasePath`; it is not currently an environment variable.

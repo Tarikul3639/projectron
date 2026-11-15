@@ -13,7 +13,7 @@ describe('JsonStorageService', () => {
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'projectron-json-'));
     const fileStorage = new FileStorageService(
-      { storagePath: root } as never,
+      { databasePath: root } as never,
       new CoordinationService(),
     );
     service = new JsonStorageService(fileStorage);
@@ -40,7 +40,7 @@ describe('JsonStorageService', () => {
 
   it('throws when the stored JSON is invalid', async () => {
     const fileStorage = new FileStorageService(
-      { storagePath: root } as never,
+      { databasePath: root } as never,
       new CoordinationService(),
     );
     await fileStorage.write('broken.json', '{invalid');

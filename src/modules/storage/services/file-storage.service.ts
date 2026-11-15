@@ -21,7 +21,7 @@ export class FileStorageService {
     config: AppConfigService,
     private readonly coordination: CoordinationService,
   ) {
-    this.rootPath = resolve(config.storagePath);
+    this.rootPath = resolve(config.databasePath);
   }
 
   /** Reads a UTF-8 storage file after resolving and validating its path beneath the storage root. */

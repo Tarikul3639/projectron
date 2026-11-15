@@ -28,8 +28,8 @@ export class AppConfigService {
   get filesystemAllowedRoots(): string {
     return this.getValue('FILESYSTEM_ALLOWED_ROOTS');
   }
-  get storagePath(): string {
-    return './storage';
+  get databasePath(): string {
+    return './database';
   }
   get logLevel(): Environment['LOG_LEVEL'] {
     return this.getValue('LOG_LEVEL');

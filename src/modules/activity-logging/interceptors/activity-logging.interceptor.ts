@@ -38,7 +38,7 @@ const MODULE_LOG_STYLES: Record<string, { label: string; color: string }> = {
   network: { label: 'NETWORK', color: `${ANSI_ESCAPE}[95m` },
   system: { label: 'SYSTEM', color: `${ANSI_ESCAPE}[94m` },
   activity: { label: 'ACTIVITY', color: `${ANSI_ESCAPE}[93m` },
-  storage: { label: 'STORAGE', color: `${ANSI_ESCAPE}[92m` },
+  storage: { label: 'DATABASE', color: `${ANSI_ESCAPE}[92m` },
   mcp: { label: 'MCP', color: `${ANSI_ESCAPE}[97m` },
 };
 
