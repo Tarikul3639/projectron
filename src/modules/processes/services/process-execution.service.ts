@@ -33,17 +33,17 @@ const BLOCKED_EXECUTABLES = new Set([
   'php',
 ]);
 
-/** Provides the process execution functionality for this module. */
+/** Starts and stops Projectron-managed child processes while enforcing executable, workspace, and lifecycle restrictions. */
 @Injectable()
 export class ProcessExecutionService {
   private readonly logger = new Logger(ProcessExecutionService.name);
-  /** Creates the service and initializes its dependencies. */
+  /** Injects process registry and workspace validation dependencies used to start and stop managed child processes. */
   constructor(
     private readonly workspace: ProcessWorkspaceService,
     private readonly registry: ProcessRegistryService,
   ) {}
 
-  /** Handles start for the component. */
+  /** Validates the executable and working directory, starts the child process, and registers it for lifecycle tracking. */
   async start(input: StartProcessInput): Promise<ManagedProcess> {
     if (this.registry.size >= MAX_MANAGED_PROCESSES)
       throw new ForbiddenException('Projectron process limit reached');
@@ -126,7 +126,7 @@ export class ProcessExecutionService {
     return { ...record, args: [...record.args] };
   }
 
-  /** Handles stop for the component. */
+  /** Sends the configured termination signal to a managed child process and waits for its exit outcome. */
   async stop(pid: number): Promise<ManagedProcess> {
     const record = this.registry.getRecord(pid);
     const child: ChildProcess | undefined = this.registry.getChild(pid);

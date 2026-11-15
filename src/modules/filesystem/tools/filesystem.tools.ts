@@ -10,7 +10,7 @@ import { FileTransferService } from '../services/file-transfer.service.js';
 /** Exposes all filesystem capabilities through one MCP tools provider. */
 @Injectable()
 export class FilesystemTools {
-  /** Initializes the tool handlers and their dependencies. */
+  /** Injects the file, directory, edit, and transfer services that implement the filesystem MCP operations. */
   constructor(
     private readonly files: FileService,
     private readonly directories: DirectoryService,
@@ -18,8 +18,7 @@ export class FilesystemTools {
     private readonly transfers: FileTransferService,
   ) {}
 
-  /** Lists direct workspace children with metadata. */
-  /** Lists active browser sessions and their open pages. */
+  /** Lists direct children of the selected workspace directory with file and directory metadata. */
   @Tool({
     name: 'filesystem_list',
     description:
@@ -36,7 +35,7 @@ export class FilesystemTools {
   }
 
   /** Returns a bounded recursive tree without following symlinks. */
-  /** Returns tree from the service. */
+  /** Delegates the bounded directory-tree request to the filesystem directory service. */
   @Tool({
     name: 'filesystem_get_tree',
     description:
@@ -53,7 +52,7 @@ export class FilesystemTools {
   }
 
   /** Reads a UTF-8 file. */
-  /** Handles read for the component. */
+  /** Reads a UTF-8 file from an allowed workspace and returns its content with path and size metadata. */
   @Tool({
     name: 'filesystem_read',
     description: 'Read a UTF-8 file within an allowed root.',
@@ -69,7 +68,7 @@ export class FilesystemTools {
   }
 
   /** Creates or overwrites a regular file. */
-  /** Handles write for the component. */
+  /** Creates or replaces a regular workspace file according to the overwrite option and configured path restrictions. */
   @Tool({
     name: 'filesystem_write',
     description:
@@ -86,8 +85,7 @@ export class FilesystemTools {
     return { success: true, path: input.path };
   }
 
-  /** Writes a batch of files with per-file results. */
-  /** Writes multiple to the requested destination. */
+  /** Writes a batch of workspace files and returns an individual success or failure result for each requested path. */
   @Tool({
     name: 'filesystem_write_multiple',
     description:
@@ -104,7 +102,7 @@ export class FilesystemTools {
   }
 
   /** Appends UTF-8 content to a file. */
-  /** Handles append for the component. */
+  /** Appends the supplied text to an existing workspace file without replacing its current contents. */
   @Tool({
     name: 'filesystem_append',
     description:
@@ -122,7 +120,7 @@ export class FilesystemTools {
   }
 
   /** Replaces exactly one occurrence of text in an existing file. */
-  /** Handles edit for the component. */
+  /** Applies an exact text replacement to a workspace file and reports the number of matched replacements. */
   @Tool({
     name: 'filesystem_edit',
     description:
@@ -138,8 +136,7 @@ export class FilesystemTools {
     return this.edits.edit(input);
   }
 
-  /** Reads an inclusive one-based line range. */
-  /** Reads range and returns the requested content. */
+  /** Reads an inclusive, one-based range of lines from the selected workspace file. */
   @Tool({
     name: 'filesystem_read_range',
     description:
@@ -155,8 +152,7 @@ export class FilesystemTools {
     return this.edits.readRange(input);
   }
 
-  /** Searches names recursively under an allowed root. */
-  /** Searches files using the supplied query. */
+  /** Searches file and directory names recursively beneath the selected root without following symbolic links. */
   @Tool({
     name: 'filesystem_search_files',
     description:
@@ -172,8 +168,7 @@ export class FilesystemTools {
     return this.edits.searchFiles(input);
   }
 
-  /** Searches inside UTF-8 text files and skips binary files. */
-  /** Searches in files using the supplied query. */
+  /** Searches UTF-8 text files recursively for the requested content and skips binary files and symbolic links. */
   @Tool({
     name: 'filesystem_search_in_files',
     description:
@@ -189,8 +184,7 @@ export class FilesystemTools {
     return this.edits.searchInFiles(input);
   }
 
-  /** Creates a directory recursively. */
-  /** Creates directory using the supplied input. */
+  /** Creates the requested directory and any missing parent directories within the selected workspace root. */
   @Tool({
     name: 'filesystem_create_directory',
     description: 'Create a directory and missing parent directories.',
@@ -206,8 +200,7 @@ export class FilesystemTools {
     return { success: true, path: input.path };
   }
 
-  /** Moves a file to Trash. */
-  /** Handles delete for the component. */
+  /** Moves the selected file or symbolic link to the operating-system Trash after validating its workspace location. */
   @Tool({
     name: 'filesystem_delete',
     description: 'Move a file or symlink to the user Trash.',
@@ -223,8 +216,7 @@ export class FilesystemTools {
     return { success: true, path: input.path };
   }
 
-  /** Moves a directory to Trash. */
-  /** Deletes directory after validating the request. */
+  /** Moves the selected directory and its contents to the operating-system Trash after path validation. */
   @Tool({
     name: 'filesystem_delete_directory',
     description: 'Move a directory and its contents to Trash.',
@@ -240,8 +232,7 @@ export class FilesystemTools {
     return { success: true, path: input.path };
   }
 
-  /** Renames a directory without replacing its destination. */
-  /** Renames directory to the requested name. */
+  /** Renames a directory within its allowed root and refuses to replace an existing destination. */
   @Tool({
     name: 'filesystem_rename_directory',
     description:
@@ -258,8 +249,7 @@ export class FilesystemTools {
     return { success: true, from: input.path, to: input.newPath };
   }
 
-  /** Copies a regular file without replacing the destination. */
-  /** Copies file to the requested destination. */
+  /** Copies a regular file to the requested workspace destination without overwriting an existing file. */
   @Tool({
     name: 'filesystem_copy_file',
     description:
@@ -276,8 +266,7 @@ export class FilesystemTools {
     return { success: true, from: input.path, to: input.destination };
   }
 
-  /** Renames a file using the same safe move primitive. */
-  /** Renames file to the requested name. */
+  /** Renames a file or symbolic link through the safe move operation without replacing the destination. */
   @Tool({
     name: 'filesystem_rename_file',
     description:
@@ -298,8 +287,7 @@ export class FilesystemTools {
     return { success: true, from: input.path, to: input.newPath };
   }
 
-  /** Copies a directory recursively. */
-  /** Copies directory to the requested destination. */
+  /** Copies a directory tree to the requested destination while preserving the transfer service's symlink protections. */
   @Tool({
     name: 'filesystem_copy_directory',
     description: 'Recursively copy a directory without following symlinks.',
@@ -315,8 +303,7 @@ export class FilesystemTools {
     return { success: true, from: input.path, to: input.destination };
   }
 
-  /** Moves a file or symlink without replacing the destination. */
-  /** Moves file to the requested destination. */
+  /** Moves a file or symbolic link to the requested workspace destination without replacing an existing target. */
   @Tool({
     name: 'filesystem_move_file',
     description:
@@ -333,8 +320,7 @@ export class FilesystemTools {
     return { success: true, from: input.path, to: input.destination };
   }
 
-  /** Moves a directory recursively. */
-  /** Moves directory to the requested destination. */
+  /** Moves a directory tree to the requested destination while enforcing the transfer service's path and symlink checks. */
   @Tool({
     name: 'filesystem_move_directory',
     description:
@@ -351,8 +337,7 @@ export class FilesystemTools {
     return { success: true, from: input.path, to: input.destination };
   }
 
-  /** Deletes a mixed batch and reports per-path outcomes. */
-  /** Deletes multiple after validating the request. */
+  /** Moves the requested mix of files, symbolic links, and directories to Trash and reports each path's outcome. */
   @Tool({
     name: 'filesystem_delete_multiple',
     description: 'Move multiple files, links, and directories to Trash.',
@@ -367,8 +352,7 @@ export class FilesystemTools {
     return this.directories.deleteMultiple(input);
   }
 
-  /** Copies a batch with per-item outcomes. */
-  /** Copies multiple to the requested destination. */
+  /** Copies the requested batch of files and directories and returns an outcome for each source/destination pair. */
   @Tool({
     name: 'filesystem_copy_multiple',
     description: 'Copy multiple files and directories with per-item outcomes.',
@@ -383,8 +367,7 @@ export class FilesystemTools {
     return this.transfers.copyMultiple(input);
   }
 
-  /** Moves a batch with per-item outcomes. */
-  /** Moves multiple to the requested destination. */
+  /** Moves the requested batch of files and directories and returns an outcome for each source/destination pair. */
   @Tool({
     name: 'filesystem_move_multiple',
     description: 'Move multiple files and directories with per-item outcomes.',
@@ -400,7 +383,7 @@ export class FilesystemTools {
   }
 
   /** Creates a batch of directories. */
-  /** Creates multiple directories using the supplied input. */
+  /** Creates the requested directory batch and returns per-path outcomes for partial failures. */
   @Tool({
     name: 'filesystem_create_multiple_directories',
     description: 'Create multiple directories and return per-path outcomes.',
@@ -415,8 +398,7 @@ export class FilesystemTools {
     return this.directories.createMultipleDirectories(input);
   }
 
-  /** Reads up to 1 MiB from a file at a byte offset. */
-  /** Reads chunk and returns the requested content. */
+  /** Reads a bounded binary-safe segment from the requested byte offset and returns the bytes as base64. */
   @Tool({
     name: 'filesystem_read_chunk',
     description: 'Read a binary-safe file chunk of up to 1 MiB as base64.',
@@ -432,7 +414,7 @@ export class FilesystemTools {
   }
 
   /** Starts a staged large-file upload. */
-  /** Handles begin upload for the component. */
+  /** Opens a staged upload and reserves its destination before receiving file chunks. */
   @Tool({
     name: 'filesystem_begin_upload',
     description: 'Begin a staged large-file upload and return its transfer ID.',
@@ -447,8 +429,7 @@ export class FilesystemTools {
     return this.transfers.beginFileUpload(input);
   }
 
-  /** Writes the next sequential upload chunk. */
-  /** Writes chunk to the requested destination. */
+  /** Appends the next sequential base64 chunk to an active staged upload and returns updated transfer progress. */
   @Tool({
     name: 'filesystem_write_chunk',
     description: 'Append the next sequential base64 chunk to an upload.',
@@ -464,7 +445,7 @@ export class FilesystemTools {
   }
 
   /** Verifies and publishes a staged upload. */
-  /** Handles finish upload for the component. */
+  /** Finalizes a staged upload after verifying the received byte count and checksum, then commits it to the destination. */
   @Tool({
     name: 'filesystem_finish_upload',
     description:
@@ -481,7 +462,7 @@ export class FilesystemTools {
   }
 
   /** Returns staged upload progress. */
-  /** Returns upload status from the service. */
+  /** Retrieves the current progress and state of the identified staged upload. */
   @Tool({
     name: 'filesystem_get_upload_status',
     description:
@@ -498,7 +479,7 @@ export class FilesystemTools {
   }
 
   /** Aborts an upload and removes its temporary file. */
-  /** Handles abort upload for the component. */
+  /** Aborts an unfinished staged upload and releases its temporary transfer resources. */
   @Tool({
     name: 'filesystem_abort_upload',
     description: 'Cancel an active upload and remove its staged file.',

@@ -12,7 +12,7 @@ import type { DnsLookupInput } from '../types/network.type.js';
 /** Performs DNS record lookups. */
 @Injectable()
 export class NetworkDnsService {
-  /** Creates the service and initializes its dependencies. */
+  /** Injects DNS resolution and network-safety dependencies for validated hostname lookups. */
   constructor(private readonly addresses: NetworkAddressService) {}
 
   /** Resolves DNS records and returns all supported records for the requested host. */

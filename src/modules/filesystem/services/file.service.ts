@@ -28,7 +28,7 @@ import { FilesystemAccess, moveToTrash } from '../utils/filesystem.utils.js';
 export class FileService {
   private readonly access: FilesystemAccess;
 
-  /** Creates the service and initializes its dependencies. */
+  /** Injects application configuration and path helpers used to enforce workspace boundaries for file operations. */
   constructor(config: AppConfigService) {
     this.access = new FilesystemAccess(config);
   }

@@ -8,7 +8,7 @@ import { BrowserSessionService } from './browser-session.service.js';
 /** Manages page evaluation, isolated context data, and workspace file uploads. */
 @Injectable()
 export class BrowserContextService {
-  /** Creates the service and initializes its dependencies. */
+  /** Injects browser-session access and filesystem-root configuration for page context and upload operations. */
   constructor(
     private readonly sessions: BrowserSessionService,
     private readonly config: AppConfigService,

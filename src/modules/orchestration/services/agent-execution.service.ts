@@ -9,7 +9,7 @@ import { OrchestrationService } from './orchestration.service.js';
 import type {
   OrchestrationStep,
   OrchestrationTask,
-} from '../types/orchestration.type.js';
+} from '../interfaces/orchestration.interface.js';
 
 type McpToolEntry = McpRegistry['tools'][number];
 
@@ -18,7 +18,7 @@ type McpToolEntry = McpRegistry['tools'][number];
 export class AgentExecutionService {
   private readonly activeTaskLocks = new Set<string>();
 
-  /** Creates the service and initializes its dependencies. */
+  /** Injects the plan registry, MCP tool dispatcher, and execution state services required to run one task step. */
   constructor(
     private readonly orchestration: OrchestrationService,
     private readonly registry: McpRegistry,

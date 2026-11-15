@@ -12,7 +12,6 @@ const url = z
     'Only HTTP and HTTPS URLs are supported',
   );
 
-// Validates browser startup and isolated context creation.
 export const browserLaunchSchema = z
   .object({
     headless: z.boolean().optional(),
@@ -50,7 +49,10 @@ export const browserTextSchema = z
   })
   .strict();
 export const browserLinksSchema = z
-  .object({ pageId, limit: z.number().int().min(1).max(500).optional() })
+  .object({
+    pageId,
+    limit: z.number().int().min(1).max(500).optional(),
+  })
   .strict();
 export const browserScreenshotSchema = z
   .object({
@@ -159,7 +161,10 @@ export const browserViewportSchema = z
   })
   .strict();
 export const browserDeviceSchema = z
-  .object({ pageId, device: z.enum(['desktop', 'mobile', 'tablet']) })
+  .object({
+    pageId,
+    device: z.enum(['desktop', 'mobile', 'tablet']),
+  })
   .strict();
 export const browserDialogSchema = z
   .object({
@@ -169,7 +174,10 @@ export const browserDialogSchema = z
   })
   .strict();
 export const browserTraceSchema = z
-  .object({ pageId, path: z.string().trim().min(1).max(4096).optional() })
+  .object({
+    pageId,
+    path: z.string().trim().min(1).max(4096).optional(),
+  })
   .strict();
 export const browserWaitUrlSchema = z
   .object({
@@ -182,11 +190,10 @@ export const browserGoSchema = z.object({ pageId }).strict();
 export const browserNewContextSchema = z.object({}).strict();
 export const browserPageInfoSchema = z.object({ pageId }).strict();
 export const browserNetworkSchema = z
-  .object({ pageId, limit: z.number().int().min(1).max(500).optional() })
+  .object({
+    pageId,
+    limit: z.number().int().min(1).max(500).optional(),
+  })
   .strict();
 export const browserPrintSchema = browserPdfSchema;
 export const browserEmptySchema = z.object({}).strict();
-
-export type BrowserLaunchInput = z.infer<typeof browserLaunchSchema>;
-export type BrowserNavigateInput = z.infer<typeof browserNavigateSchema>;
-export type BrowserScreenshotInput = z.infer<typeof browserScreenshotSchema>;

@@ -55,7 +55,7 @@ export class FileTransferService {
   private readonly access: FilesystemAccess;
   private readonly uploads = new Map<string, UploadSession>();
 
-  /** Creates the service and initializes its dependencies. */
+  /** Injects filesystem configuration and transfer dependencies for validated file copy and move operations. */
   constructor(config: AppConfigService) {
     this.access = new FilesystemAccess(config);
   }

@@ -7,7 +7,7 @@ import { TerminalService } from '../services/terminal.service.js';
 /** Exposes bounded local program execution to MCP clients. */
 @Injectable()
 export class TerminalTools {
-  /** Injects the command execution service. */
+  /** Injects the terminal service that validates and executes bounded local program invocations. */
   constructor(private readonly terminal: TerminalService) {}
 
   /** Executes one program directly and returns its captured output. */

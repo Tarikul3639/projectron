@@ -23,6 +23,14 @@ describe('FileStorageService', () => {
     expect(await readFile(join(root, 'nested/data.txt'), 'utf8')).toBe('hello');
   });
 
+  it('appends data without overwriting previous content', async () => {
+    await service.write('logs/events.jsonl', '{"event":"start"}\n');
+    await service.append('logs/events.jsonl', '{"event":"finish"}\n');
+    expect(await service.read('logs/events.jsonl')).toBe(
+      '{"event":"start"}\n{"event":"finish"}\n',
+    );
+  });
+
   it('checks and deletes a stored file', async () => {
     await service.write('data.txt', 'hello');
     expect(await service.exists('data.txt')).toBe(true);

@@ -1,4 +1,4 @@
-export type ProjectStatus = 'active' | 'archived';
+import type { ProjectStatus } from '../types/projects.type.js';
 
 export interface ProjectRecord {
   id: string;

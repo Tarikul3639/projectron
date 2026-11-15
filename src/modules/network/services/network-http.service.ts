@@ -16,7 +16,7 @@ const MAX_REDIRECTS = 3;
 /** Sends bounded HTTP requests to validated public destinations. */
 @Injectable()
 export class NetworkHttpService {
-  /** Creates the service and initializes its dependencies. */
+  /** Injects outbound-request policy and transport dependencies used to validate and execute HTTP requests. */
   constructor(private readonly addresses: NetworkAddressService) {}
 
   /** Sends an HTTP request to a validated public destination and bounds its response. */

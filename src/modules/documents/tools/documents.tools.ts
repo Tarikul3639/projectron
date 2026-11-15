@@ -14,6 +14,7 @@ import { OfficeConverterService } from '../services/office-converter.service.js'
 /** Publishes document and Office tools while keeping format implementations in services. */
 @Injectable()
 export class DocumentsTools {
+  /** Injects the format-specific services that implement document reading, generation, conversion, and inspection. */
   constructor(
     private readonly files: DocumentFileService,
     private readonly converter: DocumentConverterService,

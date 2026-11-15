@@ -1,19 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { McpRegistry } from '@nestjs/mcp';
-
-export interface McpToolSummary {
-  name: string;
-  description: string;
-  source: string;
-}
-
-export interface McpRegistrySummary {
-  tools: McpToolSummary[];
-  resources: number;
-  resourceTemplates: number;
-  prompts: number;
-  total: number;
-}
+import type {
+  McpRegistrySummary,
+  McpToolSummary,
+} from './interfaces/mcp-registry.interface.js';
 
 /** Exposes a read-only view of the primitives discovered by NestJS MCP. */
 @Injectable()

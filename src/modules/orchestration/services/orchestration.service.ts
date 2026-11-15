@@ -6,20 +6,20 @@ import {
 import { randomUUID } from 'node:crypto';
 import { McpRegistry } from '@nestjs/mcp';
 import { JsonStorageService } from '../../storage/json-storage.service.js';
+import type { OrchestrationTaskStatus } from '../types/orchestration.type.js';
 import type {
   CreateOrchestrationPlanInput,
   OrchestrationStep,
   OrchestrationTask,
-  OrchestrationTaskStatus,
   UpdateOrchestrationStepInput,
-} from '../types/orchestration.type.js';
+} from '../interfaces/orchestration.interface.js';
 
 const STORAGE_PATH = 'orchestration/tasks.json';
 
 /** Plans multi-step work and tracks execution without taking ownership of domain tools. */
 @Injectable()
 export class OrchestrationService {
-  /** Creates the service and initializes its dependencies. */
+  /** Injects persistence and registry dependencies for creating, validating, querying, and updating orchestration plans. */
   constructor(
     private readonly storage: JsonStorageService,
     private readonly registry: McpRegistry,
@@ -211,13 +211,13 @@ export class OrchestrationService {
     return task;
   }
 
-  /** Reads tasks and returns the requested content. */
+  /** Loads the persisted task collection used by orchestration queries and state transitions. */
   private async readTasks(): Promise<OrchestrationTask[]> {
     if (!(await this.storage.exists(STORAGE_PATH))) return [];
     return this.storage.read<OrchestrationTask[]>(STORAGE_PATH);
   }
 
-  /** Handles assert transition for the component. */
+  /** Validates that a step is allowed to move from its current state to the requested next state. */
   private assertTransition(
     current: OrchestrationStep['status'],
     next: OrchestrationStep['status'],
@@ -236,7 +236,7 @@ export class OrchestrationService {
     }
   }
 
-  /** Handles derive task status for the component. */
+  /** Derives the overall task status from the current states of its constituent steps. */
   private deriveTaskStatus(
     steps: OrchestrationStep[],
   ): OrchestrationTaskStatus {
@@ -259,7 +259,7 @@ export class OrchestrationService {
     return 'planned';
   }
 
-  /** Handles assert acyclic for the component. */
+  /** Checks the task dependency graph for cycles and rejects plans that cannot be topologically executed. */
   private assertAcyclic(steps: CreateOrchestrationPlanInput['steps']): void {
     const dependencies = new Map(
       steps.map((step) => [step.id, step.dependsOn ?? []]),

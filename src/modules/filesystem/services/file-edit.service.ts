@@ -14,7 +14,7 @@ import { FilesystemAccess } from '../utils/filesystem.utils.js';
 export class FileEditService {
   private readonly access: FilesystemAccess;
 
-  /** Creates the service and initializes its dependencies. */
+  /** Injects filesystem access and validation dependencies used to apply bounded file edits safely. */
   constructor(config: AppConfigService) {
     this.access = new FilesystemAccess(config);
   }

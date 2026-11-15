@@ -6,11 +6,11 @@ import type {
   BrowserPage,
   BrowserPageSummary,
   BrowserSession,
-} from '../types/browser.type.js';
+} from '../interfaces/browser-runtime.interface.js';
 import type { BrowserLaunchOptions } from '../interfaces/browser.interface.js';
 
 // Owns Chromium, isolated contexts, tabs, and the in-memory download registry.
-/** Provides the browser session functionality for this module. */
+/** Owns Chromium lifecycle, isolated browser contexts, page registration, and download tracking for MCP browser operations. */
 @Injectable()
 export class BrowserSessionService implements OnModuleDestroy {
   private browser?: Browser;
@@ -192,12 +192,12 @@ export class BrowserSessionService implements OnModuleDestroy {
     );
   }
 
-  /** Handles on module destroy for the component. */
+  /** Closes the managed browser and releases its contexts, pages, and process when the Nest module shuts down. */
   async onModuleDestroy() {
     await this.close();
   }
 
-  /** Handles ensure browser for the component. */
+  /** Launches Chromium on demand when no usable browser instance is available. */
   private async ensureBrowser() {
     if (!this.browser || !this.browser.isConnected()) {
       this.browser = await chromium.launch({
@@ -211,7 +211,7 @@ export class BrowserSessionService implements OnModuleDestroy {
       });
     }
   }
-  /** Handles register page for the component. */
+  /** Registers a newly created page, assigns its stable page ID, and tracks its owning session. */
   private registerPage(session: BrowserSession, page: Page): BrowserPage {
     const record: BrowserPage = {
       id: randomUUID(),
@@ -227,11 +227,11 @@ export class BrowserSessionService implements OnModuleDestroy {
     page.on('popup', (popup) => this.registerPage(session, popup));
     return record;
   }
-  /** Returns default session from the service. */
+  /** Resolves the current default session, creating one when the service has none available. */
   private getDefaultSession() {
     return this.getSession(this.getPage().sessionId);
   }
-  /** Handles session summary for the component. */
+  /** Builds a non-sensitive summary of the session, including its page count and creation metadata. */
   private sessionSummary(session: BrowserSession) {
     return {
       createdAt: session.createdAt,

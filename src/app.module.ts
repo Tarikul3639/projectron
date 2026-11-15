@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppConfigModule } from './config/config.module.js';
-import { LoggingInterceptor } from './common/logging/logging.interceptor.js';
-
+import { ActivityLoggingModule } from './modules/activity-logging/activity-logging.module.js';
+import { AgentCoordinationModule } from './modules/agent-coordination/agent-coordination.module.js';
 import { BrowserModule } from './modules/browser/browser.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
 import { FilesystemModule } from './modules/filesystem/filesystem.module.js';
@@ -19,6 +18,8 @@ import { TerminalModule } from './modules/terminal/terminal.module.js';
   imports: [
     AppConfigModule,
     StorageModule,
+    ActivityLoggingModule,
+    AgentCoordinationModule,
     BrowserModule,
     DocumentsModule,
     FilesystemModule,
@@ -29,12 +30,6 @@ import { TerminalModule } from './modules/terminal/terminal.module.js';
     NetworkModule,
     SystemModule,
     McpModule,
-  ],
-  providers: [
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: LoggingInterceptor,
-    },
   ],
 })
 export class AppModule {}

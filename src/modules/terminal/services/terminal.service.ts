@@ -51,7 +51,7 @@ const BLOCKED_EXECUTABLES = new Set([
 export class TerminalService {
   private readonly logger = new Logger(TerminalService.name);
   private readonly allowedRoots: string[];
-  /** Creates the service and initializes its dependencies. */
+  /** Injects command policy, workspace validation, and process execution dependencies for bounded terminal runs. */
   constructor(config: AppConfigService) {
     // Resolve configured roots once so every command uses the same workspace boundary.
     this.allowedRoots = config.filesystemAllowedRoots

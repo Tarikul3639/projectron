@@ -5,7 +5,7 @@ import { SystemProcessService } from './system-process.service.js';
 /** Produces actionable, read-only performance findings from system samples. */
 @Injectable()
 export class SystemDiagnosticsService {
-  /** Creates the service and initializes its dependencies. */
+  /** Injects the live metrics and process samplers used to identify likely system-performance bottlenecks. */
   constructor(
     private readonly metricsService: SystemMetricsService,
     private readonly processes: SystemProcessService,

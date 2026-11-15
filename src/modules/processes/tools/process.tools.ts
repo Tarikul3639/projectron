@@ -13,7 +13,7 @@ import type { StartProcessInput } from '../types/processes.type.js';
 /** Publishes process supervision tools. */
 @Injectable()
 export class ProcessTools {
-  /** Initializes process execution and registry dependencies. */
+  /** Injects the managed-process executor and registry used to start, inspect, and stop Projectron-owned processes. */
   constructor(
     private readonly execution: ProcessExecutionService,
     private readonly registry: ProcessRegistryService,

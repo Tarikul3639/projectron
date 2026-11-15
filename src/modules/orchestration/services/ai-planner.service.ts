@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { OrchestrationService } from './orchestration.service.js';
 import { AI_PROVIDER } from '../interfaces/ai-provider.interface.js';
 import type { AiProvider } from '../interfaces/ai-provider.interface.js';
-import type { CreateOrchestrationPlanInput } from '../types/orchestration.type.js';
+import type { CreateOrchestrationPlanInput } from '../interfaces/orchestration.interface.js';
 
 const generatedPlanSchema = z.object({
   steps: z
@@ -33,7 +33,7 @@ const generatedPlanSchema = z.object({
 /** Converts a natural-language goal into a validated, persisted plan. */
 @Injectable()
 export class AiPlannerService {
-  /** Creates the service and initializes its dependencies. */
+  /** Injects the configured AI provider and orchestration registry used to turn goals into validated task plans. */
   constructor(
     @Inject(AI_PROVIDER) private readonly provider: AiProvider,
     private readonly orchestration: OrchestrationService,

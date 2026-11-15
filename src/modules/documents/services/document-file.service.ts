@@ -30,7 +30,7 @@ const MAX_DOCUMENT_BYTES = 1_000_000;
 /** Reads, inspects, and creates supported text documents inside configured workspace roots. */
 @Injectable()
 export class DocumentFileService {
-  /** Creates the service and initializes its dependencies. */
+  /** Injects application configuration to resolve and enforce the allowed document workspace roots. */
   constructor(private readonly config: AppConfigService) {}
 
   /** Creates configured workspace roots before document operations begin. */

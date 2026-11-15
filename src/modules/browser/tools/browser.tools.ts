@@ -11,7 +11,7 @@ import { BrowserDownloadService } from '../services/browser-download.service.js'
 /** Publishes browser automation tools for isolated browser sessions. */
 @Injectable()
 export class BrowserTools {
-  /** Initializes the tool handlers and their dependencies. */
+  /** Injects the browser session, page, context, artifact, download, and capability services used by the MCP handlers. */
   constructor(
     private readonly contextData: BrowserContextService,
     private readonly browserInfo: BrowserInfoService,
@@ -155,7 +155,7 @@ export class BrowserTools {
     return this.sessions.closeSession(input.sessionId);
   }
 
-  /** Handles navigate for the component. */
+  /** Navigates the selected tab after validating the destination and its redirects against browser network-safety rules. */
   @Tool({
     name: 'browser_navigate',
     description:
@@ -185,7 +185,7 @@ export class BrowserTools {
     return this.pages.navigate(input);
   }
 
-  /** Handles back for the component. */
+  /** Moves the selected tab one entry backward in its navigation history. */
   @Tool({
     name: 'browser_go_back',
     description: 'Navigate to the previous page in the active tab history.',
@@ -200,7 +200,7 @@ export class BrowserTools {
     return this.pages.history(input.pageId, 'back');
   }
 
-  /** Handles forward for the component. */
+  /** Moves the selected tab one entry forward when a forward history entry exists. */
   @Tool({
     name: 'browser_go_forward',
     description: 'Navigate forward in the active tab history.',
@@ -215,7 +215,7 @@ export class BrowserTools {
     return this.pages.history(input.pageId, 'forward');
   }
 
-  /** Handles reload for the component. */
+  /** Reloads the selected tab and waits for the page service's configured navigation lifecycle. */
   @Tool({
     name: 'browser_reload',
     description: 'Reload the active browser tab.',
@@ -230,7 +230,7 @@ export class BrowserTools {
     return this.pages.reload(input.pageId);
   }
 
-  /** Handles page info for the component. */
+  /** Retrieves the current page URL, title, metadata, viewport dimensions, and readiness state. */
   @Tool({
     name: 'browser_page_info',
     description:
@@ -246,7 +246,7 @@ export class BrowserTools {
     return this.pages.info(input.pageId);
   }
 
-  /** Returns text from the service. */
+  /** Extracts visible text from the page or a CSS-selected element, respecting the requested character bound. */
   @Tool({
     name: 'browser_get_text',
     description:
@@ -272,7 +272,7 @@ export class BrowserTools {
     return this.pages.text(input);
   }
 
-  /** Returns html from the service. */
+  /** Retrieves a bounded HTML fragment from the page or selected element for structural inspection. */
   @Tool({
     name: 'browser_get_html',
     description: 'Read a bounded HTML fragment for page structure analysis.',
@@ -292,7 +292,7 @@ export class BrowserTools {
     return this.pages.html(input);
   }
 
-  /** Returns dom from the service. */
+  /** Builds a concise semantic outline of the active page's document structure and interactive elements. */
   @Tool({
     name: 'browser_get_dom',
     description:
@@ -308,7 +308,7 @@ export class BrowserTools {
     return this.pages.dom(input.pageId);
   }
 
-  /** Handles accessibility for the component. */
+  /** Retrieves a bounded accessibility-oriented outline to help identify semantic controls and labels. */
   @Tool({
     name: 'browser_get_accessibility_tree',
     description:
@@ -324,7 +324,7 @@ export class BrowserTools {
     return this.pages.accessibility(input.pageId);
   }
 
-  /** Handles links for the component. */
+  /** Lists visible links with their text and resolved destination URLs, subject to the requested result limit. */
   @Tool({
     name: 'browser_get_links',
     description:
@@ -345,7 +345,7 @@ export class BrowserTools {
     return this.pages.links(input);
   }
 
-  /** Handles wait for for the component. */
+  /** Waits for a CSS selector to reach the requested attached, detached, visible, or hidden state. */
   @Tool({
     name: 'browser_wait_for_element',
     description:
@@ -373,7 +373,7 @@ export class BrowserTools {
     return this.pages.waitFor(input);
   }
 
-  /** Handles wait url for the component. */
+  /** Waits until the active tab's URL matches the supplied pattern or expression, or the timeout expires. */
   @Tool({
     name: 'browser_wait_for_url',
     description:
@@ -395,7 +395,7 @@ export class BrowserTools {
     return this.pages.waitForUrl(input);
   }
 
-  /** Handles interact for the component. */
+  /** Performs the requested locator action, such as clicking, hovering, focusing, checking, or filling an element. */
   @Tool({
     name: 'browser_click',
     description:
@@ -432,7 +432,7 @@ export class BrowserTools {
     return this.pages.interact(input);
   }
 
-  /** Handles select for the component. */
+  /** Selects the supplied option values in the target select element and returns the selection result. */
   @Tool({
     name: 'browser_select_option',
     description: 'Select one or more options in a select element.',
@@ -453,7 +453,7 @@ export class BrowserTools {
     return this.pages.interact({ ...input, action: 'select' });
   }
 
-  /** Handles press for the component. */
+  /** Sends a keyboard key to the selected element, or to the active page when no selector is supplied. */
   @Tool({
     name: 'browser_press_key',
     description:
@@ -475,7 +475,7 @@ export class BrowserTools {
     return this.pages.press(input);
   }
 
-  /** Handles scroll for the component. */
+  /** Scrolls the active page by the requested horizontal and vertical pixel offsets. */
   @Tool({
     name: 'browser_scroll',
     description: 'Scroll the current browser page by pixel offsets.',
@@ -496,7 +496,7 @@ export class BrowserTools {
     return this.pages.scroll(input);
   }
 
-  /** Handles screenshot for the component. */
+  /** Captures a viewport, full-page, or element screenshot and optionally saves it within an allowed workspace root. */
   @Tool({
     name: 'browser_screenshot',
     description:
@@ -528,7 +528,7 @@ export class BrowserTools {
     return this.artifacts.screenshot(input);
   }
 
-  /** Handles upload for the component. */
+  /** Uploads the specified workspace files through a page file input after validating their allowed-root locations. */
   @Tool({
     name: 'browser_upload_file',
     description:
@@ -550,7 +550,7 @@ export class BrowserTools {
     return this.contextData.upload(input);
   }
 
-  /** Handles download for the component. */
+  /** Triggers a download by clicking the requested page element and returns its captured download identifier. */
   @Tool({
     name: 'browser_download',
     description:
@@ -571,7 +571,7 @@ export class BrowserTools {
     return this.downloads.trigger(input);
   }
 
-  /** Returns downloads from the service. */
+  /** Lists download records captured by the current Projectron server process without exposing temporary paths. */
   @Tool({
     name: 'browser_get_downloads',
     description:
@@ -587,7 +587,7 @@ export class BrowserTools {
     return this.downloads.list();
   }
 
-  /** Handles wait download for the component. */
+  /** Waits for the identified download to finish and reports whether it completed or failed. */
   @Tool({
     name: 'browser_wait_for_download',
     description:
@@ -603,7 +603,7 @@ export class BrowserTools {
     return this.downloads.wait(input.downloadId);
   }
 
-  /** Handles save download for the component. */
+  /** Saves a captured download to an absolute destination after enforcing workspace-root and symlink protections. */
   @Tool({
     name: 'browser_save_download',
     description:
@@ -624,7 +624,7 @@ export class BrowserTools {
     return this.downloads.save(input.downloadId, input.path);
   }
 
-  /** Handles cancel download for the component. */
+  /** Cancels an in-progress download using its captured download identifier. */
   @Tool({
     name: 'browser_cancel_download',
     description: 'Cancel a pending browser download.',
@@ -639,7 +639,7 @@ export class BrowserTools {
     return this.downloads.cancel(input.downloadId);
   }
 
-  /** Handles pdf for the component. */
+  /** Prints the selected page to an A4 PDF at a destination inside a configured workspace root. */
   @Tool({
     name: 'browser_print_to_pdf',
     description: 'Print the current page to PDF inside an allowed workspace.',
@@ -659,7 +659,7 @@ export class BrowserTools {
     return this.artifacts.pdf(input.pageId, input.path);
   }
 
-  /** Handles trace start for the component. */
+  /** Starts Playwright tracing for the browser context that owns the selected page, including screenshots, snapshots, and sources. */
   @Tool({
     name: 'browser_trace_start',
     description: 'Start Playwright tracing for the selected browser context.',
@@ -674,7 +674,7 @@ export class BrowserTools {
     return this.artifacts.traceStart(input.pageId);
   }
 
-  /** Handles trace stop for the component. */
+  /** Stops the active context trace and writes its archive to a validated workspace destination. */
   @Tool({
     name: 'browser_trace_stop',
     description:
@@ -713,7 +713,7 @@ export class BrowserTools {
     return this.contextData.evaluate(input);
   }
 
-  /** Handles cookies for the component. */
+  /** Reads cookies from the selected isolated context and returns them with cookie values redacted. */
   @Tool({
     name: 'browser_get_cookies',
     description:
@@ -729,7 +729,7 @@ export class BrowserTools {
     return this.contextData.cookies(input.pageId);
   }
 
-  /** Handles set cookies for the component. */
+  /** Adds the supplied cookies to the selected isolated browser context. */
   @Tool({
     name: 'browser_set_cookies',
     description: 'Set cookies in the selected isolated browser context.',
@@ -752,7 +752,7 @@ export class BrowserTools {
     return this.contextData.setCookies(input);
   }
 
-  /** Reads storage and returns the requested content. */
+  /** Reads localStorage or sessionStorage for the selected page origin, masking values under credential-like keys. */
   @Tool({
     name: 'browser_read_storage',
     description:
@@ -773,7 +773,7 @@ export class BrowserTools {
     return this.contextData.readStorage(input);
   }
 
-  /** Writes storage to the requested destination. */
+  /** Writes one key/value pair to localStorage or sessionStorage in the selected page origin. */
   @Tool({
     name: 'browser_write_storage',
     description: 'Set one localStorage or sessionStorage entry.',
@@ -800,7 +800,7 @@ export class BrowserTools {
     return this.contextData.writeStorage(input);
   }
 
-  /** Clears session. */
+  /** Clears cookies and both web-storage areas for the isolated context associated with the selected page. */
   @Tool({
     name: 'browser_clear_session',
     description:
@@ -841,7 +841,7 @@ export class BrowserTools {
     return this.artifacts.viewport(input);
   }
 
-  /** Handles emulate for the component. */
+  /** Applies the predefined desktop, mobile, or tablet viewport dimensions to the selected page. */
   @Tool({
     name: 'browser_emulate_device',
     description: 'Apply a desktop, mobile, or tablet viewport preset.',
@@ -871,7 +871,7 @@ export class BrowserTools {
     return { device: input.device, ...size };
   }
 
-  /** Handles network for the component. */
+  /** Attaches page diagnostics when needed and returns captured requests, response metadata, and network failures. */
   @Tool({
     name: 'browser_network_logs',
     description:
@@ -888,7 +888,7 @@ export class BrowserTools {
     return this.pages.network(input.pageId);
   }
 
-  /** Handles console logs for the component. */
+  /** Attaches page diagnostics and returns captured browser console messages for the selected tab. */
   @Tool({
     name: 'browser_get_console_logs',
     description:
@@ -905,7 +905,7 @@ export class BrowserTools {
     return this.pages.consoleLogs(input.pageId);
   }
 
-  /** Handles errors for the component. */
+  /** Returns uncaught JavaScript errors captured from the selected page, including available diagnostic details. */
   @Tool({
     name: 'browser_get_errors',
     description:
@@ -922,7 +922,7 @@ export class BrowserTools {
     return this.pages.errors(input.pageId);
   }
 
-  /** Handles images for the component. */
+  /** Lists page images with their source, alternative text, intrinsic dimensions, and loading state. */
   @Tool({
     name: 'browser_get_images',
     description:
@@ -938,7 +938,7 @@ export class BrowserTools {
     return this.pages.images(input.pageId);
   }
 
-  /** Handles performance for the component. */
+  /** Reads navigation timing and resource-transfer measurements exposed by the selected page. */
   @Tool({
     name: 'browser_get_performance',
     description:
@@ -954,7 +954,7 @@ export class BrowserTools {
     return this.pages.performance(input.pageId);
   }
 
-  /** Handles drag and drop for the component. */
+  /** Drags the source locator onto the target locator within the selected page. */
   @Tool({
     name: 'browser_drag_and_drop',
     description:
@@ -976,7 +976,7 @@ export class BrowserTools {
     return this.pages.dragAndDrop(input);
   }
 
-  /** Handles dialog for the component. */
+  /** Accepts or dismisses the most recent JavaScript dialog and supplies optional prompt text when accepting. */
   @Tool({
     name: 'browser_handle_dialog',
     description:

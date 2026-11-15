@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Tool, type McpContext } from '@nestjs/mcp';
 import * as s from '../schemas/orchestration.schemas.js';
-import type * as t from '../types/orchestration.type.js';
+import type * as t from '../interfaces/orchestration.interface.js';
 import { AiPlannerService } from '../services/ai-planner.service.js';
 import { OrchestrationService } from '../services/orchestration.service.js';
 import { AgentExecutionService } from '../services/agent-execution.service.js';
@@ -9,7 +9,7 @@ import { AgentExecutionService } from '../services/agent-execution.service.js';
 /** MCP tools for planning, executing, and tracking multi-step work. */
 @Injectable()
 export class OrchestrationTools {
-  /** Initializes orchestration services. */
+  /** Injects planning, task-state, and step-execution services used by the orchestration MCP interface. */
   constructor(
     private readonly orchestration: OrchestrationService,
     private readonly planner: AiPlannerService,

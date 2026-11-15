@@ -10,14 +10,17 @@ import { constants } from 'node:fs';
 import { delimiter, isAbsolute, relative, resolve, sep } from 'node:path';
 import { AppConfigService } from '../../../config/config.service.js';
 import { JsonStorageService } from '../../storage/json-storage.service.js';
-import type { ProjectRecord, ProjectStore } from '../projects.interface.js';
+import type {
+  ProjectRecord,
+  ProjectStore,
+} from '../interfaces/projects.interface.js';
 import type {
   CreateProjectInput,
   DiscoverProjectsInput,
   ImportProjectInput,
   ProjectIdInput,
   UpdateProjectInput,
-} from '../projects.type.js';
+} from '../interfaces/project-input.interface.js';
 
 const STORE_PATH = 'projects/projects.json';
 

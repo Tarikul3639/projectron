@@ -27,7 +27,7 @@ import {
 export class DirectoryService {
   private readonly access: FilesystemAccess;
 
-  /** Creates the service and initializes its dependencies. */
+  /** Injects filesystem configuration and shared path-validation dependencies for directory operations. */
   constructor(config: AppConfigService) {
     this.access = new FilesystemAccess(config);
   }

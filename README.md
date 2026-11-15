@@ -94,6 +94,7 @@ The [documentation index](docs/README.md) links to the full guides:
 - [MCP Client Connection](docs/client-connection.md)
 - [MCP Tools Reference](docs/tools.md)
 - [Browser Automation](docs/browser-automation.md)
+- [Client Solution Overview Presentation](docs/Projectron_Client_Solution_Overview.pptx)
 - [Office and Document Support](docs/document-support.md)
 - [Orchestration](docs/orchestration.md)
 - [Logging and Error Reporting](docs/logging-and-errors.md)

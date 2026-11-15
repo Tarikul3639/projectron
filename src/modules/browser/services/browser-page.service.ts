@@ -4,7 +4,7 @@ import { BrowserSessionService } from './browser-session.service.js';
 import { assertSafeBrowserUrl } from '../utils/browser.utils.js';
 
 // Handles page navigation, DOM inspection, interaction, and browser diagnostics.
-/** Provides the browser page functionality for this module. */
+/** Coordinates safe page navigation, DOM inspection, user-like interactions, and bounded browser diagnostics for active tabs. */
 @Injectable()
 export class BrowserPageService {
   private readonly requests = new Map<
@@ -26,7 +26,7 @@ export class BrowserPageService {
     string,
     Array<{ message: string; stack?: string }>
   >();
-  /** Creates the service and initializes its dependencies. */
+  /** Injects the session manager that resolves active pages and browser contexts for page operations. */
   constructor(private readonly sessions: BrowserSessionService) {}
 
   /** Checks initial and redirected requests before allowing the browser to reach a host. */

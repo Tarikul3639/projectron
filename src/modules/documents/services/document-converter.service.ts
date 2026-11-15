@@ -6,7 +6,7 @@ import { getDocumentFormat } from '../utils/documents.utils.js';
 /** Converts between supported text-based document formats without external executables. */
 @Injectable()
 export class DocumentConverterService {
-  /** Creates the service and initializes its dependencies. */
+  /** Injects the document file service used to read source content and persist converted output. */
   constructor(private readonly files: DocumentFileService) {}
 
   /** Reads a source document, converts its content, and writes the destination document. */

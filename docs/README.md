@@ -12,6 +12,7 @@ Use this page to find the guide for the task you are working on.
 
 - [MCP Tools Reference](tools.md) — module overview, tool groups, execution behavior, and safety boundaries.
 - [Browser Automation](browser-automation.md) — Chromium sessions, page interaction, screenshots, viewport/device emulation, downloads, PDFs, and tracing.
+- [Client Solution Overview Presentation](Projectron_Client_Solution_Overview.pptx) — 13-slide PowerPoint deck for business and client discussions.
 - [Office and Document Support](document-support.md) — text formats, DOCX, XLSX, PPTX, PDF, examples, conversion support, and limits.
 - [Orchestration](orchestration.md) — plan creation, AI-assisted planning, step execution, retry, and cancellation.
 

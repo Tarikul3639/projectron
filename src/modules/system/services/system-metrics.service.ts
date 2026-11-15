@@ -8,7 +8,7 @@ const CPU_SAMPLE_MS = 250;
 /** Samples host CPU, memory, load, disk I/O, and temperature metrics. */
 @Injectable()
 export class SystemMetricsService {
-  /** Creates the service and initializes its dependencies. */
+  /** Injects operating-system sampling dependencies used to calculate CPU, memory, load, and uptime metrics. */
   constructor(private readonly hardware: SystemHardwareService) {}
 
   /** Samples overall CPU, memory, load average, and uptime metrics. */

@@ -15,7 +15,7 @@ import { NetworkHttpService } from '../services/network-http.service.js';
 /** Publishes network diagnostics and bounded outbound HTTP tools. */
 @Injectable()
 export class NetworkTools {
-  /** Initializes the network tool handlers. */
+  /** Injects DNS, TCP-connectivity, and outbound HTTP services behind the network MCP tools. */
   constructor(
     private readonly dnsService: NetworkDnsService,
     private readonly connectivityService: NetworkConnectivityService,

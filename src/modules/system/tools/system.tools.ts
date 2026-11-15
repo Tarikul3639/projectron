@@ -10,7 +10,7 @@ import { SystemDiagnosticsService } from '../services/system-diagnostics.service
 /** Exposes read-only system diagnostics through Projectron MCP tools. */
 @Injectable()
 export class SystemTools {
-  /** Initializes the tool handlers and their dependencies. */
+  /** Injects the system information, metrics, hardware, process, and diagnostics services exposed to MCP clients. */
   constructor(
     private readonly infoService: SystemInfoService,
     private readonly metricsService: SystemMetricsService,
@@ -20,7 +20,6 @@ export class SystemTools {
   ) {}
 
   /** Returns operating-system, hardware, runtime, and uptime information. */
-  /** Handles info for the component. */
   @Tool({
     name: 'system_info',
     description:
@@ -37,7 +36,6 @@ export class SystemTools {
   }
 
   /** Returns a fresh sample of overall CPU and memory metrics. */
-  /** Handles metrics for the component. */
   @Tool({
     name: 'system_metrics',
     description:
@@ -54,7 +52,6 @@ export class SystemTools {
   }
 
   /** Returns sampled read/write throughput and counters for block devices. */
-  /** Handles disk io for the component. */
   @Tool({
     name: 'system_disk_io',
     description:
@@ -71,7 +68,6 @@ export class SystemTools {
   }
 
   /** Returns temperatures exposed by Linux thermal and hardware-monitoring drivers. */
-  /** Handles temperatures for the component. */
   @Tool({
     name: 'system_temperatures',
     description:
@@ -88,7 +84,6 @@ export class SystemTools {
   }
 
   /** Lists processes ranked by CPU utilization; available on Linux. */
-  /** Handles top processes for the component. */
   @Tool({
     name: 'system_top_processes',
     description:
@@ -109,7 +104,6 @@ export class SystemTools {
   }
 
   /** Explains likely CPU or memory bottlenecks without changing system state. */
-  /** Handles diagnose for the component. */
   @Tool({
     name: 'system_diagnose_performance',
     description:

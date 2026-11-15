@@ -9,7 +9,7 @@ import type {
 /** Performs TCP connectivity and port checks against public destinations. */
 @Injectable()
 export class NetworkConnectivityService {
-  /** Creates the service and initializes its dependencies. */
+  /** Injects network policy and address-validation dependencies used before outbound connectivity checks. */
   constructor(private readonly addresses: NetworkAddressService) {}
 
   /** Tests whether a public host accepts a TCP connection on the requested port. */
