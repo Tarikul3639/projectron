@@ -1,4 +1,4 @@
-export interface AgentSession {
+export interface ExecutionSession {
   /** Stable identity of the connected application/client. Multiple sessions may share it. */
   clientId: string;
   clientName: string;

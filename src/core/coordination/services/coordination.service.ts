@@ -5,43 +5,43 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type {
-  AgentSession,
   CoordinationTask,
+  ExecutionSession,
   ResourceLock,
-} from '../interfaces/agent-coordination.interface.js';
+} from '../interfaces/coordination.interface.js';
 import type {
+  CoordinationTaskStatus,
   LockAcquireResult,
   ResourceLockMode,
-  CoordinationTaskStatus,
-} from '../types/agent-coordination.type.js';
+} from '../types/coordination.type.js';
 
 const DEFAULT_LEASE_SECONDS = 60;
 
+/**
+ * Shared in-process coordination primitives. Feature modules enforce these
+ * policies at their own resource-operation boundaries.
+ */
 @Injectable()
-export class AgentCoordinationService {
-  /** Session ID is the coordination principal; client ID is descriptive metadata only. */
-  private readonly agents = new Map<string, AgentSession>();
+export class CoordinationService {
+  private readonly sessions = new Map<string, ExecutionSession>();
   private readonly locks = new Map<string, Map<string, ResourceLock>>();
   private readonly tasks = new Map<string, CoordinationTask>();
 
-  /**
-   * Registers one independent execution session (for example, one browser tab).
-   * Omitting sessionId creates a fresh identity; pass an existing sessionId only to reconnect it.
-   */
-  registerAgent(input: {
+  /** Registers one execution context; reuse sessionId only when reconnecting it. */
+  registerSession(input: {
     clientId: string;
     clientName: string;
     sessionId?: string;
     leaseSeconds?: number;
-  }): AgentSession {
+  }): ExecutionSession {
     this.cleanupExpired();
     const sessionId = input.sessionId ?? randomUUID();
     const now = new Date();
-    const existing = this.agents.get(sessionId);
+    const existing = this.sessions.get(sessionId);
     if (existing && existing.clientId !== input.clientId) {
       throw new ConflictException('Session ID is already registered to another client');
     }
-    const session: AgentSession = {
+    const session: ExecutionSession = {
       sessionId,
       clientId: input.clientId,
       clientName: input.clientName,
@@ -49,16 +49,16 @@ export class AgentCoordinationService {
       lastHeartbeatAt: now.toISOString(),
       expiresAt: this.expiry(input.leaseSeconds),
     };
-    this.agents.set(sessionId, session);
+    this.sessions.set(sessionId, session);
     return session;
   }
 
-  /** Renews only the specified session and the locks owned by that session. */
-  heartbeat(sessionId: string, leaseSeconds?: number): AgentSession {
+  /** Renews one session and only the locks owned by that session. */
+  heartbeatSession(sessionId: string, leaseSeconds?: number): ExecutionSession {
     this.cleanupExpired();
-    const current = this.agents.get(sessionId);
+    const current = this.sessions.get(sessionId);
     if (!current) {
-      throw new NotFoundException('Agent session not found; register this session first');
+      throw new NotFoundException('Execution session not found; register this session first');
     }
     const now = new Date().toISOString();
     const session = {
@@ -66,7 +66,7 @@ export class AgentCoordinationService {
       lastHeartbeatAt: now,
       expiresAt: this.expiry(leaseSeconds),
     };
-    this.agents.set(sessionId, session);
+    this.sessions.set(sessionId, session);
     for (const [resource, owners] of this.locks) {
       const lock = owners.get(sessionId);
       if (lock) owners.set(sessionId, { ...lock, expiresAt: session.expiresAt });
@@ -75,10 +75,7 @@ export class AgentCoordinationService {
     return session;
   }
 
-  /**
-   * Acquires a shared read lock or exclusive write lock.
-   * Locks are isolated by session, even when multiple sessions share one clientId.
-   */
+  /** Acquires shared read or exclusive write access for a resource. */
   acquireLock(input: {
     sessionId: string;
     resource: string;
@@ -86,9 +83,8 @@ export class AgentCoordinationService {
     leaseSeconds?: number;
   }): LockAcquireResult {
     this.cleanupExpired();
-    const session = this.requireAgent(input.sessionId);
-    const owners =
-      this.locks.get(input.resource) ?? new Map<string, ResourceLock>();
+    const session = this.requireSession(input.sessionId);
+    const owners = this.locks.get(input.resource) ?? new Map<string, ResourceLock>();
     const own = owners.get(input.sessionId);
     const otherLocks = [...owners.values()].filter(
       (lock) => lock.ownerSessionId !== input.sessionId,
@@ -108,8 +104,7 @@ export class AgentCoordinationService {
         currentOwners: otherLocks.map((lock) => lock.ownerSessionId),
       };
     }
-
-    if (own && own.mode === 'read' && input.mode === 'write') {
+    if (own?.mode === 'read' && input.mode === 'write') {
       return {
         acquired: false,
         reason: 'Release the read lock before requesting an exclusive write lock',
@@ -130,11 +125,8 @@ export class AgentCoordinationService {
     return { acquired: true, lock };
   }
 
-  /** Releases a resource lock only when it belongs to the requesting session. */
-  releaseLock(
-    sessionId: string,
-    resource: string,
-  ): { released: boolean; resource: string } {
+  /** Releases a lock only when it belongs to the requesting session. */
+  releaseLock(sessionId: string, resource: string): { released: boolean; resource: string } {
     this.cleanupExpired();
     const owners = this.locks.get(resource);
     if (!owners?.has(sessionId)) return { released: false, resource };
@@ -143,21 +135,20 @@ export class AgentCoordinationService {
     return { released: true, resource };
   }
 
-  /** Returns active sessions, locks, and tasks; optional project filtering applies to tasks. */
+  /** Returns active sessions, locks, and tasks, optionally filtered by project. */
   listState(projectId?: string) {
     this.cleanupExpired();
     const tasks = [...this.tasks.values()].filter(
       (task) => !projectId || task.projectId === projectId,
     );
     return {
-      agents: [...this.agents.values()],
-      sessions: [...this.agents.values()],
+      sessions: [...this.sessions.values()],
       locks: [...this.locks.values()].flatMap((owners) => [...owners.values()]),
       tasks,
     };
   }
 
-  /** Creates a pending task owned by a registered session. */
+  /** Creates a pending task owned by a registered execution session. */
   createTask(input: {
     taskId: string;
     projectId: string;
@@ -166,7 +157,7 @@ export class AgentCoordinationService {
     ownerSessionId: string;
   }): CoordinationTask {
     this.cleanupExpired();
-    const owner = this.requireAgent(input.ownerSessionId);
+    const owner = this.requireSession(input.ownerSessionId);
     if (this.tasks.has(input.taskId)) {
       throw new ConflictException('Task ID already exists');
     }
@@ -182,7 +173,7 @@ export class AgentCoordinationService {
     return task;
   }
 
-  /** Updates a task as its owning session, or explicitly transfers it to the requesting session. */
+  /** Updates a task as its owner, or explicitly transfers it to this session. */
   updateTask(input: {
     taskId: string;
     sessionId: string;
@@ -190,7 +181,7 @@ export class AgentCoordinationService {
     takeover?: boolean;
   }): CoordinationTask {
     this.cleanupExpired();
-    const session = this.requireAgent(input.sessionId);
+    const session = this.requireSession(input.sessionId);
     const task = this.tasks.get(input.taskId);
     if (!task) throw new NotFoundException('Task not found');
     if (task.ownerSessionId !== input.sessionId && input.takeover !== true) {
@@ -209,12 +200,12 @@ export class AgentCoordinationService {
     return updated;
   }
 
-  private requireAgent(sessionId: string): AgentSession {
-    const agent = this.agents.get(sessionId);
-    if (!agent) {
-      throw new NotFoundException('Agent session not found; register this session first');
+  private requireSession(sessionId: string): ExecutionSession {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new NotFoundException('Execution session not found; register this session first');
     }
-    return agent;
+    return session;
   }
 
   private expiry(seconds = DEFAULT_LEASE_SECONDS): string {
@@ -224,9 +215,9 @@ export class AgentCoordinationService {
   /** Removes expired sessions and every lock they own; sibling sessions remain active. */
   private cleanupExpired(): void {
     const now = Date.now();
-    for (const [sessionId, agent] of this.agents) {
-      if (Date.parse(agent.expiresAt) <= now) {
-        this.agents.delete(sessionId);
+    for (const [sessionId, session] of this.sessions) {
+      if (Date.parse(session.expiresAt) <= now) {
+        this.sessions.delete(sessionId);
         for (const [resource, owners] of this.locks) {
           owners.delete(sessionId);
           if (owners.size === 0) this.locks.delete(resource);

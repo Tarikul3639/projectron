@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppConfigModule } from './config/config.module.js';
+import { CoreModule } from './core/core.module.js';
 import { ActivityLoggingModule } from './modules/activity-logging/activity-logging.module.js';
-import { AgentCoordinationModule } from './modules/agent-coordination/agent-coordination.module.js';
 import { BrowserModule } from './modules/browser/browser.module.js';
 import { DocumentsModule } from './modules/documents/documents.module.js';
 import { FilesystemModule } from './modules/filesystem/filesystem.module.js';
@@ -17,9 +17,9 @@ import { TerminalModule } from './modules/terminal/terminal.module.js';
 @Module({
   imports: [
     AppConfigModule,
+    CoreModule,
     StorageModule,
     ActivityLoggingModule,
-    AgentCoordinationModule,
     BrowserModule,
     DocumentsModule,
     FilesystemModule,
